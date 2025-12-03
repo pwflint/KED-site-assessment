@@ -1,0 +1,88 @@
+# Site Assessment Metadata Template
+# Copy this file and fill in site-specific information
+# File should be named: siteMetadata_[projectName].yaml
+
+# Project Information
+project:
+  name: "Project Name"
+  client: "Client Name"
+  date_assessment: "2025-01-02"  # YYYY-MM-DD format
+  prepared_by: "Your Name"
+  firm_name: "Firm Name"
+  logo_path: "path/to/logo.png"  # Optional: path to logo file
+
+# Site Location
+site:
+  address: "123 Main Street, City, State ZIP"
+  parcel_id: "Parcel ID if available"  # Optional
+  latitude: 40.7128  # Decimal degrees
+  longitude: -74.0060  # Decimal degrees
+  crs: "EPSG:4326"  # Coordinate reference system (WGS84 default)
+  
+  # Parcel boundary options:
+  # Option 1: Provide bounding box (will create rectangular boundary)
+  bbox:
+    xmin: -74.02
+    xmax: -73.99
+    ymin: 40.70
+    ymax: 40.73
+  
+  # Option 2: Provide path to shapefile
+  # boundary_shapefile: "path/to/parcel.shp"
+  
+  # Option 3: Provide coordinates as list of [lon, lat] pairs
+  # boundary_coords:
+  #   - [-74.02, 40.70]
+  #   - [-74.01, 40.70]
+  #   - [-74.01, 40.73]
+  #   - [-74.02, 40.73]
+  #   - [-74.02, 40.70]  # Close polygon
+
+# Data Sources (will be auto-populated, but can be manually specified)
+data_sources:
+  dem:
+    source: "USGS 3DEP"
+    resolution: "10m"  # or "3m", "1m"
+    year: "2024"
+  
+  soils:
+    source: "NRCS SSURGO"
+    year: "2023"
+  
+  climate:
+    source: "PRISM Climate Group"
+    period: "1991-2020"
+  
+  watershed:
+    source: "USGS NHD"
+    year: "2023"
+  
+  ecoregion:
+    source: "EPA Ecoregions"
+    level: "III"  # or "IV"
+  
+  flood_zones:
+    source: "FEMA"
+    year: "2023"  # Check for most recent FEMA maps
+
+# Analysis Parameters
+analysis:
+  buffer_distance: 5000  # Meters: buffer around site for regional context
+  dem_resolution: "10m"  # Preferred DEM resolution
+  slope_classes:
+    - [0, 5, "Gentle"]
+    - [5, 15, "Moderate"]
+    - [15, 999, "Steep"]
+  
+  # Custom notes or requirements
+  notes: |
+    Any site-specific notes or requirements
+    Can be multi-line text
+
+# Output Settings
+output:
+  format: "pdf"  # "pdf", "html", or both
+  size: "11x17"  # "11x17", "8.5x11", or custom dimensions
+  dpi: 300
+  output_dir: "output/reports"
+

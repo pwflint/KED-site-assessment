@@ -1,0 +1,115 @@
+# R
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+.Rproj.user/
+*.Rproj.user
+*.Rproj
+*.Rapp
+
+# R Package Files
+*.tar.gz
+*.tgz
+.Rcheck/
+
+# RStudio
+.Rproj.user/
+*.sublime-project
+*.sublime-workspace
+
+# Output files
+*.pdf
+*.html
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.tif
+*.tiff
+
+# Data files (keep structure, ignore large files)
+data/raw/**/*
+!data/raw/.gitkeep
+data/processed/**/*
+!data/processed/.gitkeep
+*.csv
+*.xlsx
+*.xls
+*.rds
+*.RData
+*.geojson
+*.shp
+*.shx
+*.dbf
+*.prj
+*.tif
+*.tiff
+
+# Output directories (keep structure)
+output/**/*
+!output/.gitkeep
+!output/cache/.gitkeep
+!output/figures/.gitkeep
+!output/reports/.gitkeep
+
+# Cache
+*.cache
+.cache/
+.Rcache/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Environment variables
+.env
+.Renviron
+
+# Package installation
+packrat/
+renv/
+
+# Quarto
+.quarto/
+_quarto/
+
+# Shiny
+rsconnect/
+
+# Keep directory structure
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!output/.gitkeep
+!output/cache/.gitkeep
+!output/figures/.gitkeep
+!output/reports/.gitkeep
+
+# But allow templates and small example files
+!templates/**
+!data/siteInfo/**
+!example_scripts/**
+
+# Allow font files (they're part of the project)
+!styles/**
+
