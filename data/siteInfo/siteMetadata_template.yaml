@@ -15,17 +15,20 @@ project:
 site:
   address: "123 Main Street, City, State ZIP"
   parcel_id: "Parcel ID if available"  # Optional
-  latitude: 40.7128  # Decimal degrees
-  longitude: -74.0060  # Decimal degrees
+  latitude: 40.7128  # Decimal degrees - parcel center point
+  longitude: -74.0060  # Decimal degrees - parcel center point
   crs: "EPSG:4326"  # Coordinate reference system (WGS84 default)
   
   # Parcel boundary options:
+  # IMPORTANT: Provide the actual parcel boundary, not a large area!
+  # Typical parcel sizes: Residential ~0.1-0.5 acres, Commercial ~0.5-5 acres
   # Option 1: Provide bounding box (will create rectangular boundary)
+  # Example for ~100m x 100m parcel (~0.25 acres):
   bbox:
-    xmin: -74.02
-    xmax: -73.99
-    ymin: 40.70
-    ymax: 40.73
+    xmin: -74.0061  # Adjust based on actual parcel size
+    xmax: -74.0059  # ~50-100m on each side of center point
+    ymin: 40.7127   # ~0.0009 degrees ≈ 100m at mid-latitudes
+    ymax: 40.7129
   
   # Option 2: Provide path to shapefile
   # boundary_shapefile: "path/to/parcel.shp"
@@ -67,8 +70,11 @@ data_sources:
 
 # Analysis Parameters
 analysis:
-  buffer_distance: 5000  # Meters: buffer around site for regional context
-  dem_resolution: "10m"  # Preferred DEM resolution
+  buffer_distance: 5000  # Meters: buffer around parcel for regional context maps
+  # Note: Spatial data (DEM, soils, watershed, etc.) will be clipped to parcel boundary
+  # Climate data is regional and represents the broader area, not parcel-specific
+  dem_resolution: "10m"  # Preferred DEM resolution (1m, 3m, or 10m)
+  # Use 1m for small parcels (<1 acre), 3m for medium (1-5 acres), 10m for large (>5 acres)
   slope_classes:
     - [0, 5, "Gentle"]
     - [5, 15, "Moderate"]

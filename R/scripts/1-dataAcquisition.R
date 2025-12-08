@@ -4,6 +4,7 @@
 # Source helper functions
 source(here::here("R", "functions", "apiHelpers.R"))
 source(here::here("R", "functions", "dataHelpers.R"))
+source(here::here("R", "functions", "dataAcquisitionHelpers.R"))
 
 #' Acquire all data sources for site assessment
 #'
@@ -12,10 +13,19 @@ source(here::here("R", "functions", "dataHelpers.R"))
 #' @return List of acquired data objects
 acquire_site_data <- function(metadata, cache_dir = "data/raw") {
   
-  message("Starting data acquisition...")
+  message("=", rep("=", 60), "\n", sep = "")
+  message("STARTING DATA ACQUISITION\n")
+  message("=", rep("=", 60), "\n")
   
+  # Load site metadata and create boundary
+  # Note: site_boundary represents the actual parcel boundary (not a large area)
+  # Climate data uses coordinates only (regional data, not parcel-specific)
   site <- metadata$site
-  site_coords <- c(site$longitude, site$latitude)
+  site_coords <- c(site$longitude, site$latitude)  # For climate/wind (regional)
+  site_boundary <- create_site_boundary(metadata)   # For spatial data (parcel-level)
+  
+  # Get resolution from metadata or use default
+  dem_resolution <- metadata$data_sources$dem$resolution %||% "10m"
   
   # Create cache directory structure
   cache_dirs <- list(
@@ -34,40 +44,62 @@ acquire_site_data <- function(metadata, cache_dir = "data/raw") {
   # Initialize data list
   data_list <- list()
   
-  # TODO: Implement data acquisition for each source
   # 1. DEM (Digital Elevation Model) - USGS 3DEP
-  message("Acquiring DEM data...")
-  # data_list$dem <- acquire_dem(site_coords, cache_dirs$dem)
+  # Spatial data: clipped to parcel boundary
+  message("\n[1/8] Acquiring DEM data (parcel-level)...")
+  data_list$dem <- acquire_dem(site_boundary, resolution = dem_resolution, cache_dir = cache_dirs$dem)
   
   # 2. Soils - NRCS SSURGO
-  message("Acquiring soil data...")
-  # data_list$soils <- acquire_soils(site_coords, cache_dirs$soils)
+  # Spatial data: clipped to parcel boundary
+  message("\n[2/8] Acquiring soil data (parcel-level)...")
+  data_list$soils <- acquire_soils(site_boundary, cache_dir = cache_dirs$soils)
   
   # 3. Climate - PRISM
-  message("Acquiring climate data...")
-  # data_list$climate <- acquire_climate(site_coords, cache_dirs$climate)
+  # Regional data: uses coordinates only (not parcel-specific)
+  message("\n[3/8] Acquiring climate data (regional)...")
+  climate_period <- metadata$data_sources$climate$period %||% "normals"
+  data_list$climate <- acquire_climate(site_coords, period = climate_period, cache_dir = cache_dirs$climate)
   
   # 4. Wind - NOAA
-  message("Acquiring wind data...")
-  # data_list$wind <- acquire_wind(site_coords, cache_dirs$wind)
+  # Regional data: uses coordinates only (not parcel-specific)
+  message("\n[4/8] Acquiring wind data (regional)...")
+  data_list$wind <- acquire_wind(site_coords, cache_dir = cache_dirs$wind)
   
   # 5. Watershed - NHDPlus
-  message("Acquiring watershed data...")
-  # data_list$watershed <- acquire_watershed(site_coords, cache_dirs$watershed)
+  # Spatial data: clipped to parcel boundary
+  message("\n[5/8] Acquiring watershed data (parcel-level)...")
+  data_list$watershed <- acquire_watershed(site_boundary, cache_dir = cache_dirs$watershed)
   
   # 6. Ecoregions - EPA
-  message("Acquiring ecoregion data...")
-  # data_list$ecoregion <- acquire_ecoregion(site_coords, cache_dirs$ecoregion)
+  # Spatial data: clipped to parcel boundary
+  message("\n[6/8] Acquiring ecoregion data (parcel-level)...")
+  ecoregion_level <- metadata$data_sources$ecoregion$level %||% "III"
+  data_list$ecoregion <- acquire_ecoregion(site_boundary, level = ecoregion_level, cache_dir = cache_dirs$ecoregion)
   
   # 7. Canopy Height (if available)
-  message("Checking for canopy height data...")
-  # data_list$canopy <- acquire_canopy(site_coords, cache_dirs$canopy)
+  # Spatial data: clipped to parcel boundary
+  message("\n[7/8] Checking for canopy height data (parcel-level)...")
+  data_list$canopy <- acquire_canopy(site_boundary, cache_dir = cache_dirs$canopy)
   
   # 8. Flood Zones - FEMA
-  message("Acquiring flood zone data...")
-  # data_list$flood_zones <- acquire_flood_zones(site_coords, cache_dirs$flood)
+  # Spatial data: clipped to parcel boundary
+  message("\n[8/8] Acquiring flood zone data (parcel-level)...")
+  data_list$flood_zones <- acquire_flood_zones(site_boundary, cache_dir = cache_dirs$flood)
   
-  message("Data acquisition complete!")
+  message("\n", "=", rep("=", 60), "\n", sep = "")
+  message("DATA ACQUISITION COMPLETE\n")
+  message("=", rep("=", 60), "\n")
+  
+  # Summary of acquired data
+  message("\nAcquisition Summary:")
+  for (i in seq_along(data_list)) {
+    data_name <- names(data_list)[i]
+    if (is.null(data_list[[i]])) {
+      message("  - ", data_name, ": ❌ Not acquired")
+    } else {
+      message("  - ", data_name, ": ✅ Acquired")
+    }
+  }
   
   return(data_list)
 }

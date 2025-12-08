@@ -17,7 +17,7 @@ viz_packages <- c(
 # Spatial Data & Mapping
 spatial_packages <- c(
   "sf", "terra", "stars", "rnaturalearth", "rmapshaper", 
-  "ggspatial", "maps", "mapdata"
+  "ggspatial", "maps", "mapdata", "elevatr"  # elevatr for USGS 3DEP DEM access
 )
 
 # Climate & Weather Data

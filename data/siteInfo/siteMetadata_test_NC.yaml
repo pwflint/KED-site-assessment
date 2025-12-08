@@ -1,0 +1,94 @@
+# Site Assessment Metadata - Test Site (North Carolina)
+# Test site in Raleigh, NC area for data acquisition testing
+
+# Project Information
+project:
+  name: "Test Site - Data Acquisition"
+  client: "Test Client"
+  date_assessment: "2025-12-05"  # YYYY-MM-DD format
+  prepared_by: "Test User"
+  firm_name: "Test Firm"
+  logo_path: ""  # Optional: path to logo file
+
+# Site Location
+site:
+  address: "1053 East Whitaker Mill Rd, Raleigh, NC 27604"  # Real test site address
+  parcel_id: ""  # Optional
+  latitude: 35.7975  # Decimal degrees - parcel center point (approximate, will be refined)
+  longitude: -78.6380  # Decimal degrees - parcel center point (approximate, will be refined)
+  crs: "EPSG:4326"  # Coordinate reference system (WGS84 default)
+  
+  # Parcel boundary options:
+  # Option 1: Provide bounding box (will create rectangular boundary)
+  # Typical parcel size: ~0.1-0.5 acres = ~20-50m on a side
+  # This bbox represents a ~100m x 100m parcel (~0.25 acres)
+  # Note: These coordinates are approximate - should be refined with actual parcel data
+  bbox:
+    xmin: -78.6382  # ~50m west of center
+    xmax: -78.6378  # ~50m east of center
+    ymin: 35.7973   # ~50m south of center
+    ymax: 35.7977   # ~50m north of center
+  
+  # Option 2: Provide path to shapefile
+  # boundary_shapefile: "path/to/parcel.shp"
+  
+  # Option 3: Provide coordinates as list of [lon, lat] pairs
+  # boundary_coords:
+  #   - [-78.65, 35.77]
+  #   - [-78.63, 35.77]
+  #   - [-78.63, 35.79]
+  #   - [-78.65, 35.79]
+  #   - [-78.65, 35.77]  # Close polygon
+
+# Data Sources (will be auto-populated, but can be manually specified)
+data_sources:
+  dem:
+    source: "USGS 3DEP"
+    resolution: "10m"  # or "3m", "1m"
+    year: "2024"
+  
+  soils:
+    source: "NRCS SSURGO"
+    year: "2023"
+  
+  climate:
+    source: "PRISM Climate Group"
+    period: "normals"  # 1991-2020 normals
+  
+  watershed:
+    source: "USGS NHD"
+    year: "2023"
+  
+  ecoregion:
+    source: "EPA Ecoregions"
+    level: "III"  # or "IV"
+  
+  flood_zones:
+    source: "FEMA"
+    year: "2023"  # Check for most recent FEMA maps
+
+# Analysis Parameters
+analysis:
+  buffer_distance: 5000  # Meters: buffer around parcel for regional context maps
+  # Note: Spatial data (DEM, soils, etc.) will be clipped to parcel boundary
+  # Climate data is regional and doesn't need parcel-level detail
+  dem_resolution: "10m"  # Preferred DEM resolution (1m, 3m, or 10m)
+  slope_classes:
+    - [0, 5, "Gentle"]
+    - [5, 15, "Moderate"]
+    - [15, 999, "Steep"]
+  
+  # Custom notes or requirements
+  notes: |
+    Test site for data acquisition workflow
+    Real address: 1053 East Whitaker Mill Rd, Raleigh, NC 27604
+    Coordinates are approximate - should be refined with actual parcel data
+    Testing all data sources at parcel scale
+
+# Output Settings
+output:
+  format: "pdf"  # "pdf", "html", or both
+  size: "11x17"  # "11x17", "8.5x11", or custom dimensions
+  dpi: 300
+  output_dir: "output/reports"
+
