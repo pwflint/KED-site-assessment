@@ -1,0 +1,8 @@
+# Oak ignore — gitignore-compatible patterns (same rules as .gitignore)
+# oakvcs-core reads .gitignore; this file adds Oak-only paths. Keep both in sync.
+
+# Git source archive — Oak ignores Git metadata (dual-VCS in this directory)
+.git/
+
+.env
+.env.*

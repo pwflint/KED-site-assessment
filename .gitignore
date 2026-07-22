@@ -1,0 +1,15 @@
+# OS
+.DS_Store
+.DS_Store?
+._*
+
+# Secrets
+.env
+.env.*
+
+# Oak (agent VCS metadata — not part of the source archive)
+.oak/
+
+# Logs / temp
+*.log
+*.tmp

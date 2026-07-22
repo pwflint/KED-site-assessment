@@ -1,0 +1,46 @@
+---
+description: Oak operational VCS workflow for KED site-assessment agent sessions
+globs:
+alwaysApply: true
+---
+
+# Oak — operational VCS (KED site-assessment)
+
+Oak (hosted oak.space) is the agent's version control for **code and config** in this repo.
+
+## Single working directory
+
+All development happens in this checkout. Git (GitHub) and Oak coexist here (dual-VCS). One Cursor workspace — no sibling Oak checkout.
+
+| Tool | Role in this directory |
+|------|------------------------|
+| **Oak** (`pwflint/KED-site-assessment`) | Agent operational VCS — daily checkpoints |
+| **Git → GitHub** | Source archive — Peter promotes on schedule |
+
+## Hierarchy
+
+- **docs/PRD.md** — product requirements ground truth; changes here go through review, not routine Oak checkpoints
+- **Oak** — agent operational VCS: branch per session, human merges to main
+
+## Agent obligations
+
+1. Work only on the current Oak feature branch — never push to main
+2. Before finishing: `oak desc "..."` with a reviewer summary (not a file list)
+3. Checkpoint: `oak commit` then `oak push` — then stop; Peter runs `oak merge`
+4. Do not run `oak merge`, `oak close`, or destructive git/Oak commands without explicit approval
+5. Do **not** `git commit` or `git push` unless Peter explicitly asks — Oak owns session changes
+6. Do not re-run `oak init` if `.oak/` exists
+
+## Session open
+
+- Confirm Oak branch: `oak info` or `oak branch --show-current`
+
+## Harness / Cursor
+
+- `.cursor/rules/` is canonical — skip or ignore any Oak `AGENTS.md` scaffold
+- If `oak space new` is used later, do not treat Oak's AGENTS.md as overriding Cursor rules without Peter's approval
+
+## Promotion
+
+GitHub remains source archive. Promoting Oak `main` → GitHub is a human decision, not automatic.
+See `.cursor/rules/git-workflow.mdc` for promotion boundaries.

@@ -1,0 +1,63 @@
+---
+description: Git and GitHub source-archive workflow — complements Oak operational VCS
+alwaysApply: true
+---
+
+# Git — source archive (complements Oak)
+
+Git + GitHub (`pwflint/KED-site-assessment`, public) is the **long-term source record** for this repo.
+Oak is the **agent operational VCS** during sessions — see `.cursor/rules/oak-workflow.mdc`.
+
+Agents checkpoint on Oak; Peter merges Oak `main`; GitHub receives promoted history on Peter's schedule.
+
+## Roles
+
+| Layer | Tool | Owns |
+|-------|------|------|
+| Agent session VCS | Oak (hosted) | Branch-per-session code changes, checkpoints, squash-merge to Oak `main` |
+| Source archive | Git → GitHub (public) | Durable history, issues, CI/CD, human-reviewed promotion |
+
+## Agent obligations (git)
+
+1. **Default to Oak** for code/config changes during agent work — do not `git commit` or `git push` unless Peter explicitly asks
+2. Never `git push` to `main`/`master`, force-push, or rewrite published history without explicit approval
+3. Never commit secrets (`.env`, API keys) or client site data — this repo is **public**
+4. Do not run `git init`, change remotes, or remove `.git/` — Oak and Git share this directory
+5. When Peter requests a git commit, use **conventional commits** (`feat`, `fix`, `chore`, `docs`, `refactor`, `test`) and reference GitHub issues as `#<number>` when applicable
+
+## Promotion (Oak → Git)
+
+Peter decides when Oak `main` is promoted to GitHub. Agents do not auto-sync.
+
+Typical human flow after Oak merge (same working directory):
+
+1. Review `git status` — Oak changes appear as ordinary file edits
+2. `git checkout -b chore/promote-<topic>`
+3. Stage, conventional commit, push, open PR on GitHub
+
+Alternative: `oak export /tmp/KED-site-assessment-from-oak` for a clean diff review before git commit.
+
+**GitHub remote (this repo):** `https://github.com/pwflint/KED-site-assessment.git` (public).
+
+## Ignore files
+
+- **`.gitignore`** — canonical for Git pushes to GitHub
+- **`.oakignore`** — Oak-only additions; oakvcs-core also reads `.gitignore`
+- Keep both aligned on secrets and any client/site data added later
+- **Dual-VCS (this directory):** Git ignores `.oak/`; Oak ignores `.git/`
+
+## GitHub conventions
+
+Conventional commits, small focused PRs, issue references in commits and PR descriptions, labels/milestones when used.
+
+**This repo is public** — no client-identifying site data, addresses, or credentials, ever, in tracked files.
+
+## Session open
+
+- Oak branch: `oak info` (operational VCS)
+- Git state: `git status` / `git branch --show-current` only when git promotion or explicit git work is in scope
+- Do not assume git and Oak branches share names or history
+
+## Conflicts between Oak and git
+
+If both show uncommitted changes, **stop and ask Peter** which system owns the session outcome before committing to either.
