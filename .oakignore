@@ -6,3 +6,6 @@
 
 .env
 .env.*
+
+# Local Claude Code session state — not project content
+.claude/settings.local.json

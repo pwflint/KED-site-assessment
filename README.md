@@ -9,6 +9,7 @@ Data-augmented environmental site assessment for KALEIOPE Environmental Design �
 - [`docs/PRD.md`](docs/PRD.md) — Product Requirements Document v1 (2026-06-08). Canonical spec: problem, users, architecture, data requirements, report sections, phasing.
 - [`docs/DATA_SOURCE_RESEARCH.md`](docs/DATA_SOURCE_RESEARCH.md) — per-source API research carried forward from the prior attempt. Six-plus months old as of this fresh start; re-validate before implementing against any source (see PRD §4).
 - [`docs/reference/dataViz_temp.jpg`](docs/reference/dataViz_temp.jpg) — visualization style reference carried forward from the prior attempt's templates.
+- [`docs/WORKFLOW_SPEC.md`](docs/WORKFLOW_SPEC.md) — the acquire → translate → illustrate workflow, what the illustrations must convey, and what's explicitly deferred.
 
 ## No stack decided yet
 
