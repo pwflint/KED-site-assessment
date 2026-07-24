@@ -16,15 +16,45 @@ This document tracks research tasks for data sources, API endpoints, data availa
 
 ## Research Status
 
-- [ ] DEM (1m resolution)
-- [ ] Climate (PRISM)
-- [ ] Wind (NOAA)
+- [x] Parcel / base map ✅ 2026-07-22
+- [x] DEM (1m resolution) ✅ 2026-07-22
+- [x] Climate (PRISM) ✅ 2026-07-24
+- [x] Wind (NOAA) ✅ 2026-07-24
 - [ ] Watershed (HUC 06/12)
 - [ ] Ecoregions (EPA Level III)
 - [ ] Soils (SSURGO properties)
 - [ ] Flood Zones (FEMA)
 - [ ] OpenStreetMap (base maps)
 - [ ] Canopy Height (LiDAR)
+
+---
+
+## Parcel / Base Map
+
+Not in the original research list below, but Tier 1 per the PRD and validated 2026-07-22 as the first slice of the fresh-start rebuild.
+
+### Finding: PRD's stated source (`osmdata`/OSM Overpass) is wrong
+
+OSM is not authoritative for cadastral parcel boundaries — it's not built for that. The correct source is NC OneMap's statewide parcels layer, `NC1Map_Parcels`, which aggregates all 100 counties' tax parcel data (via the Integrated Cadastral Data Exchange project) into one standardized feature service.
+
+- **FeatureServer:** `https://services.gis.nc.gov/secure/rest/services/NC1Map_Parcels/FeatureServer/1` (layer 1 = polygons; layer 0 = centroids)
+- Also served from `services.nconemap.gov` — same underlying NC OneMap system as the DEM
+- **Public, no auth required**, despite "secure" appearing in the URL path
+- 71 fields per parcel: owner name, mailing/site address, GIS acres, tax use code + description, structure count/year, sale date, legal description, county, etc.
+
+### Query pattern
+
+Practitioner always has an exact, unambiguous address (confirmed with the client before the assessment runs) — no fuzzy matching needed. Exact match on `siteadd` (Full Site Address) + `scity` (Site Address City). **Do not scope by `szip`** — confirmed empty on a real test record, not reliably populated statewide. `cntyname` is a useful additional filter if the county is already known.
+
+### Data quality caveats (per-county — do not assume uniform)
+
+- `szip` empty on the one Wake County record tested
+- `parusedesc` (Tax Parcel Use Code Description) returned as a raw code (`"R"`) rather than spelled-out text on that same record — completeness of this field likely varies by county's source contribution
+- Treat every field as needing a per-county spot check the first time a new county (Orange, Durham, Harnett, etc.) is brought online — log findings here as each one is tested
+
+### Test case
+
+`7 Hill St, Raleigh, NC 27610` (Wake County) — exact match returned one feature: parcel `1713393228`, 0.14 acres, single-family residential, polygon geometry. Confirmed end-to-end.
 
 ---
 
@@ -57,8 +87,30 @@ This document tracks research tasks for data sources, API endpoints, data availa
 **Target**: 1m resolution for all parcels
 **Action Items**:
 - [x] Research 1m DEM availability for NC ✅ 2025-12-09
-- [ ] Test alternative data sources
+- [x] Test alternative data sources ✅ 2026-07-22 — see findings below
 - [ ] Update acquisition script if needed
+
+### 2026-07-22 findings — endpoint validated, real gotchas found
+
+**Endpoint confirmed live:** `https://services.nconemap.gov/secure/rest/services/Elevation/DEM03/ImageServer` (also on `services.gis.nc.gov`). Public, no auth. Resolution 3.125 ft (~0.95m) — matches the "1m" target. Same NC OneMap system as parcels, so acquisition can share auth/access patterns across both.
+
+**Likely bare-earth, not confirmed in so many words.** The service's own metadata abstract states it was "created by the NC Floodplain Mapping Program and processed by NC Department of Public Safety – Division of Emergency Management." Floodplain/hydraulic modeling requires bare-earth elevation — you cannot run FEMA-compliant flood models with buildings and canopy in the surface — so this is strong circumstantial evidence of bare-earth intent. The metadata text does not use the words "bare earth" explicitly.
+
+**Building footprints are visible in hillshade renders as flat, sharp-edged rectangular blocks.** Working theory (Peter's, and it fits the floodplain-program provenance): LiDAR can't return a valid ground hit under a roofline, so bare-earth processing has to interpolate/fill that void — a flat, sharp-edged fill is exactly what void-filling under a footprint looks like. A retaining wall showed a real graded shadow in the same render; the building blocks didn't. Not fully confirmed against explicit product documentation.
+
+**NC's `DEM03_slope` / `DEM03_aspect` / `DEM03_Contours*_raster` ImageServer endpoints exist but are not usable for numeric analysis via a plain `exportImage` call.** They return pre-styled RGB display images (meant for rendering in an ArcGIS map client), not raw slope-degree or aspect-degree pixel values, even when an explicit `renderingRule` is passed. **Use case:** compute slope/aspect yourself from the raw bare-earth `DEM03` raster via `terra::terrain()` — this is the reliable, auditable path, not a fallback.
+
+**Critical methodology rule — always match `exportImage` `size` to native resolution.** Requesting a raster export with a pixel `size` much larger than what the bbox supports at native resolution (3.125 ft/px) forces the server to oversample — with nearest-neighbor interpolation this stretches each real grid cell into a block of identical fake sub-pixels. Slope computed on that stair-stepped surface produces a **false grid-patterned "erosion risk" artifact** — real terrain doesn't erode in perfect right angles; a rectilinear pattern in a derived slope/risk map is the tell that this bug has recurred. Compute `size` from `bbox extent ÷ 3.125 ft` before every export; never default to a fixed large size on a small bbox. (This bug produced a false "11.3% of parcel at erosion risk" reading in-session; corrected to 0.9% at native resolution.)
+
+**Clip strategy — two different scales, don't conflate them.** Analysis rasters (slope, aspect, drainage) should be clipped tight — just outside the parcel boundary (~10-20 ft buffer, matching the old Site Data Extraction Model's design). Wider buffers are only appropriate for regional/neighborhood *context* visuals, which the PRD's Topography section doesn't actually call for ("hillshade map of parcel and immediate context," not neighborhood) — Regional Orientation context comes from ecoregion/parcel data, not the 1m DEM.
+
+**Test case (7 Hill St, Raleigh, Wake County), native-resolution results:**
+- Parcel elevation range: 316.7–319.0 ft (2.3 ft relief — flat lot)
+- Max slope on parcel: 13.8° (25% grade), localized to the front corner near the street — plausible driveway/curb transition, not an artifact
+- Erosion-risk area (>20% grade, an NRCS-style threshold): 0.9% of parcel
+- 36.9% of parcel faces S/SE/SW (highest solar exposure band) — a real input for microclimate/heat framing
+
+**A one-variable exploratory sketch** (slope classified into low/moderate/erosion-risk, masked to the parcel) was produced in-session to prove this concept end-to-end. It is **not** a product-ready visualization, was not requested as a design deliverable, and represents only slope — no aspect, drainage, canopy, or the plain-language translation layer the client-facing report needs. Kept out of the tracked repo; useful as a reference for what the Topography/Microclimate sections are working toward, not as a spec.
 
 ---
 
@@ -90,9 +142,34 @@ This document tracks research tasks for data sources, API endpoints, data availa
 **Current**: PRISM package, but data structure is empty after download
 **Target**: Reliable temperature and precipitation data (seasonal averages)
 **Action Items**:
-- [ ] Debug PRISM data loading issue
-- [ ] Test alternative methods for extracting PRISM data
+- [x] Debug PRISM data loading issue ✅ 2026-07-24 — see findings below
+- [x] Test alternative methods for extracting PRISM data ✅ 2026-07-24
 - [ ] Research NOAA station data as alternative/complement
+
+### 2026-07-24 findings — root cause found, direct download validated, no package needed
+
+**Root cause of the "empty structure" bug:** `prism_archive_subset()` targets 30-year normals specifically, but normals were never served on PRISM's modern REST API (`services.nacse.org/prism/data/get/...`) — confirmed that service only carries recent monthly/daily "AN" (all-networks) data. Normals only ever lived on the direct file-distribution path. This wasn't a bug to fix in our code; the `prism` package (or our use of it) was pointed at the wrong distribution.
+
+**Validated direct-download path, no auth, no R package dependency:**
+```
+https://data.prism.oregonstate.edu/normals/us/4km/{element}/monthly/prism_{element}_us_25m_2020{month}_avg_30y.zip
+```
+- `{element}`: confirmed working for `ppt`, `tmax`, `tmin`, `tmean` (directory listing also shows `tdmean`, `vpdmax`, `vpdmin` at the same path, untested)
+- `{month}`: two-digit `01`–`12`
+- Each zip contains a GeoTIFF (~2.8MB) plus `.stn.csv` (station list used) and `.info.txt` (metadata) — loads directly into `terra`
+
+**Caching matters for production economics.** These are CONUS-wide grids, not parcel-clippable via the distribution service — every parcel in the same state hits the same file. Cache each element/month grid once (~2.8MB × 4 elements × 12 months ≈ 134MB total) and reuse across every future site; this is a one-time infrastructure cost, not a per-assessment cost, which matters for the $200–250 price point in `WORKFLOW_SPEC.md`.
+
+**Test case (7 Hill St, Raleigh, Wake County) — seasonal normals, Winter/Spring/Summer/Fall per the PRD's Nov-Jan/Feb-Apr/May-Jul/Aug-Oct grouping:**
+
+| | Winter | Spring | Summer | Fall |
+|---|---|---|---|---|
+| Precip (mm) | 89.4 | 89.5 | 110.7 | 116.1 |
+| Tmax (°C) | 13.4 | 17.6 | 29.4 | 26.9 |
+| Tmin (°C) | 0.9 | 3.9 | 17.6 | 15.3 |
+| Tmean (°C) | 7.2 | 10.7 | 23.5 | 21.1 |
+
+Sanity-checked: tmax > tmin every month, summer > winter, annual precipitation total (1,217mm ≈ 47.9in) is a close match to Raleigh's known ~46in annual average.
 
 ---
 
@@ -124,10 +201,24 @@ This document tracks research tasks for data sources, API endpoints, data availa
 **Current**: NOAA NCEI Data Service API (new system, no token required)
 **Target**: Wind rose from nearest station with seasonal averages
 **Action Items**:
-- [ ] Verify correct API endpoint and parameters
-- [ ] Research how to find nearest station IDs
-- [ ] Test wind rose generation from station data
-- [ ] Document seasonal wind patterns needed
+- [x] Verify correct API endpoint and parameters ✅ 2026-07-24
+- [x] Research how to find nearest station IDs ✅ 2026-07-24
+- [x] Test wind rose generation from station data ✅ 2026-07-24
+- [x] Document seasonal wind patterns needed ✅ 2026-07-24
+
+### 2026-07-24 findings — station-based daily data, no wind-rose product exists, build it ourselves
+
+**Went with NCEI daily-summaries + our own binning, not `rWind`.** The two approaches in the research questions above point in different directions: `rWind` pulls GFS gridded model output (real-time-ish, 50km), while the Implementation Notes describe a station-based NCEI attempt. Station data is the better fit — it's an actual observed record at a real point, matching how PRISM/soils/DEM already tie back to specific, citable sources, rather than a coarse model grid. No wind-rose product exists anywhere in NOAA's catalog; every path here means binning many years of raw observations into direction/frequency counts ourselves, which is what the old notes were gesturing at ("interpolate this from the downloaded dataset").
+
+**Endpoint confirmed live, no token:** `https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations={id}&startDate=...&endDate=...&dataTypes=AWND,WSF2,WDF2&units=metric&format=json`. The old "400 error" was very likely a parameter-naming issue, not a dead endpoint — this works cleanly once the params match the current docs.
+
+**Station selection needs a real filter, not just "nearest."** GHCND's station list (`https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt`, ~132K stations, fixed-width format) includes CoCoRaHS volunteer rain-gauge stations (`US1` prefix) that are often geographically closer to a given parcel than any real weather station, but **only measure precipitation, never wind.** Naively picking the nearest US-prefixed station picked one of these first and returned an empty wind column. Restricting to `USW` (Weather-Bureau-Army-Navy — airport/NWS sites with full instrumentation) fixes it. `USC` (COOP) stations have inconsistent wind reporting and are also worth avoiding for this purpose.
+
+**Test case (7 Hill St, Wake County):** nearest `USW` station is `USW00013722`, Raleigh-Durham International Airport — confirmed by name in the API response, not assumed. 10 years of daily data (2016-07-25 to 2026-07-21), 3,649 records, only 3 missing direction values.
+
+**Seasonal wind rose (8-point compass, % of days from each direction, mean speed m/s):**
+
+Southwest is the dominant direction in all four seasons (30–43%), strongest in summer (43% frequency, 3.69 m/s mean speed), with northeast as the consistent secondary direction. This matches known Piedmont NC climatology — summertime subtropical-ridge flow from the SW, more NE representation in cold-season frontal passages.
 
 ---
 
