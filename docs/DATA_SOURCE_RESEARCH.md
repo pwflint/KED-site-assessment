@@ -20,12 +20,13 @@ This document tracks research tasks for data sources, API endpoints, data availa
 - [x] DEM (1m resolution) ✅ 2026-07-22
 - [x] Climate (PRISM) ✅ 2026-07-24
 - [x] Wind (NOAA) ✅ 2026-07-24
-- [ ] Watershed (HUC 06/12)
-- [ ] Ecoregions (EPA Level III)
-- [ ] Soils (SSURGO properties)
-- [ ] Flood Zones (FEMA)
-- [ ] OpenStreetMap (base maps)
-- [ ] Canopy Height (LiDAR)
+- [x] Watershed (HUC 06/12) ✅ 2026-07-24 — source located and retrievable; extent logic deferred to visualization stage
+- [x] Ecoregions (EPA Level III) ✅ 2026-07-24 — source located and retrievable; extent logic deferred to visualization stage
+- [x] Soils (SSURGO properties) ✅ 2026-07-24 — validated via SDA + UC Davis SoilWeb, see Soils section (checklist item missed being marked when this was originally done)
+- [x] Flood Zones (FEMA) ✅ 2026-07-24
+- [x] OpenStreetMap (base maps) ✅ 2026-07-24 — source located and retrievable; extent logic deferred to visualization stage
+- [x] Building Footprints (new, not in original PRD) ✅ 2026-07-24 — 2D geometry only, placeholder height; see Canopy Height section
+- [x] Canopy Height (LiDAR) ✅ 2026-07-24 — reconsidered: 2D extent + placeholder height, not LiDAR-derived height; see section below
 
 ---
 
@@ -245,10 +246,31 @@ Southwest is the dominant direction in all four seasons (30–43%), strongest in
 **Current**: NHDPlus via `nhdplusTools` (unreliable)
 **Target**: HUC 06 for regional context, HUC 12 for parcels, intermediate HUCs for hierarchy
 **Action Items**:
-- [ ] Research WBD as alternative to NHDPlus
-- [ ] Test HUC boundary acquisition from WBD
-- [ ] Research how to get watershed names/hierarchy
-- [ ] Update acquisition script if needed
+- [x] Research WBD as alternative to NHDPlus ✅ 2026-07-24
+- [x] Test HUC boundary acquisition from WBD ✅ 2026-07-24
+- [x] Research how to get watershed names/hierarchy ✅ 2026-07-24 — name comes directly on each HUC layer
+- [ ] Update acquisition script if needed — deferred; extent/clipping logic depends on visualization-stage decisions, not built yet
+
+### 2026-07-24 findings — WBD confirmed, NHDPlus's replacement works cleanly
+
+**Source:** USGS/NRCS Watershed Boundary Dataset, served live at `https://hydro.nationalmap.gov/arcgis/rest/services/wbd/MapServer` (no auth). One MapServer, one layer per HUC digit-level:
+
+| Layer ID | Level |
+|---|---|
+| 1 | 2-digit (Region) |
+| 2 | 4-digit (Subregion) |
+| 3 | 6-digit (Basin) — **HUC06, target for regional context** |
+| 4 | 8-digit (Subbasin) |
+| 5 | 10-digit (Watershed) |
+| 6 | 12-digit (Subwatershed) — **HUC12, target for parcel-level** |
+| 7 | 14-digit |
+| 8 | 16-digit |
+
+Standard ArcGIS REST point-intersection query against each layer (`geometryType=esriGeometryPoint`, `spatialRel=esriSpatialRelIntersects`) returns the HUC code and name directly — no separate hierarchy lookup needed, each level is queryable independently at the same point.
+
+**Test case (7 Hill St):** HUC06 = "Neuse" (030202) — correct, Raleigh is in the Neuse River basin. HUC12 = "Walnut Creek" (030202011101) — correct, Walnut Creek is the actual local stream running through Raleigh. Both values checked against known real geography, not just "the API responded."
+
+**Scope note:** only point-intersection was tested (confirms the source exists and is retrievable). Actual extent to acquire/render (just the intersecting polygon vs. a buffered region vs. neighboring HUCs for context) is a visualization-stage decision per Peter, not decided here.
 
 ---
 
@@ -274,9 +296,19 @@ Southwest is the dominant direction in all four seasons (30–43%), strongest in
 **Current**: Not implemented
 **Target**: All Level III ecoregions for state, with parcel's ecoregion emphasized
 **Action Items**:
-- [ ] Research EPA ecoregion data sources
-- [ ] Test data acquisition method
-- [ ] Implement acquisition function
+- [x] Research EPA ecoregion data sources ✅ 2026-07-24
+- [x] Test data acquisition method ✅ 2026-07-24
+- [ ] Implement acquisition function — deferred; extent logic (state-wide inset vs. local only) is a visualization-stage decision, not built yet
+
+### 2026-07-24 findings — confirmed, plus one field that isn't trustworthy
+
+**Source:** EPA ArcGIS REST, `https://gispub.epa.gov/arcgis/rest/services/ORD/USEPA_Ecoregions_Level_III_and_IV/MapServer` (no auth). Layer 11 = Level III Ecoregion Polygons, layer 7 = Level IV Ecoregion Polygons. Same point-intersection query pattern as watershed/parcels.
+
+**Test case (7 Hill St):** Level III = "Piedmont" (code 45), Level IV = "Northern Outer Piedmont" (45f), Level II = "Southeastern USA Plains", Level I = "Eastern Temperate Forests" — all correct for this location.
+
+**Data quality catch:** the same Level III response includes a `STATE_NAME` field that returned **"Alabama"** for a Raleigh, NC point. Wrong, and not a fluke of this one query — ecoregions cross state boundaries, so a single polygon feature's `STATE_NAME` attribute is likely just a leftover/summary label from whichever state that polygon record originated in, not a real per-point spatial answer. **Do not use this field for state attribution.** State is already reliably available from the parcel data (`cntyname`/state via NC1Map_Parcels).
+
+**Scope note:** only point-intersection tested, matching the watershed source above — confirms retrievability, not final extent.
 
 ---
 
@@ -333,10 +365,54 @@ Southwest is the dominant direction in all four seasons (30–43%), strongest in
 **Current**: FEMA ArcGIS REST API (unreliable, 404 errors)
 **Target**: Flood zone data if parcel is in flood zone, gracefully handle if not
 **Action Items**:
-- [ ] Verify correct FEMA API endpoint and parameters
-- [ ] Test with known flood zone locations
-- [ ] Document 404 handling (not in flood zone vs API error)
-- [ ] Research alternative sources if needed
+- [x] Verify correct FEMA API endpoint and parameters ✅ 2026-07-24
+- [x] Test with known flood zone locations ✅ 2026-07-24
+- [x] Document 404 handling (not in flood zone vs API error) ✅ 2026-07-24 — the premise was wrong, see below
+- [ ] Research alternative sources if needed — not needed, this source works
+
+### 2026-07-24 findings — the old "404 = not in flood zone" assumption was wrong
+
+**Endpoint confirmed live:** `https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer/28` (Flood Hazard Zones — layer 28 was already the right guess in the old notes; something else was wrong, likely query parameters or geometryType). No auth.
+
+**The real design point, and this changes the check-first logic:** NFHL's coverage is comprehensive. A point-intersection query almost always returns a real feature — including "Zone X" (minimal hazard) areas — so **"did a feature come back" is not the check.** The actual boolean is the `SFHA_TF` field (Special Flood Hazard Area, `"T"`/`"F"`). A genuinely empty response means something different again: no flood study covers this location at all — that's an "unknown," not a safe "not in a flood zone," and should be surfaced as such rather than silently treated as a negative.
+
+**Both cases validated with real data:**
+- 7 Hill St (test parcel): `FLD_ZONE: "X"`, `ZONE_SUBTY: "AREA OF MINIMAL FLOOD HAZARD"`, `SFHA_TF: "F"` — a real feature, correctly not a hazard area.
+- A location ~5mi away near Raleigh: `FLD_ZONE: "AE"`, `SFHA_TF: "T"` — a real 100-year floodplain designation, confirming the field semantics work both directions, not just the negative case that happened to match our test parcel.
+
+**`R/acquisition/flood.R`** implements exactly the check-first-then-retrieve pattern: check `SFHA_TF` first; if true, return zone code, subtype, and base flood elevation (watch for `-9999` as FEMA's null sentinel, converted to `NA`); if false, return the zone code for reference without further detail; if no feature at all, return `status: "unstudied"` rather than assuming safe. Validated against the test parcel.
+
+### 2026-07-24 correction — "Zone X" is not one risk picture; don't skip geometry on the top-level code alone
+
+Peter's framing: "not in a flood zone" is pre-climate-change language, and FEMA's own "minimal hazard" designation should be reported as "not likely," not a flat safe/unsafe binary. His assumption was that Zone X shouldn't need geometry retrieval — checked this against the real distinct `(FLD_ZONE, ZONE_SUBTY, SFHA_TF)` combinations occurring in NC (not assumed), and it only holds for one specific subtype:
+
+**Complete list — all 11 distinct `ZONE_SUBTY` values occurring under `FLD_ZONE='X'` in NC** (re-verified directly, not grouped for presentation):
+
+```
+0.2 PCT ANNUAL CHANCE FLOOD HAZARD
+1 PCT CONTAINED IN STRUCTURE, COMMUNITY ENCROACHMENT
+1 PCT CONTAINED IN STRUCTURE, FLOODWAY
+1 PCT FUTURE CONDITIONS
+1 PCT FUTURE CONDITIONS CONTAINED IN STRUCTURE
+1 PCT FUTURE CONDITIONS, COMMUNITY ENCROACHMENT
+1 PCT FUTURE CONDITIONS, FLOODWAY
+1 PCT FUTURE IN STRUCTURE, COMMUNITY ENCROACHMENT
+1 PCT FUTURE IN STRUCTURE, FLOODWAY
+AREA OF MINIMAL FLOOD HAZARD
+AREA WITH REDUCED FLOOD RISK DUE TO LEVEE
+```
+
+Only **AREA OF MINIMAL FLOOD HAZARD** is a true negative. Everything else is real risk information (500-year floodplain, levee-dependent, engineered-containment, or FEMA's own forward-looking "future conditions" floodplain) filed under the same top-level "X" code.
+
+**No bare "1 PCT ANNUAL CHANCE FLOOD HAZARD" appears under X, and that's expected, not a gap.** A plain, current, effective 100-year floodplain isn't an X-zone subtype at all — it's a different top-level `FLD_ZONE` (`AE` or `A`) with `ZONE_SUBTY = NULL`. The "1 PCT..." strings that do appear under X are only the special-cased ones (future-conditions projection, or currently engineered-contained); the baseline 1% designation lives under AE/A, not as an X subtype.
+
+**All top-level `FLD_ZONE` codes occurring in NC:** `A, AE, AH, AO, OPEN WATER, VE, X` — no `D` (undetermined/unstudied) found, no `AR`/`A99`. Scoped to NC (`DFIRM_ID LIKE '37%'`), matching the product's current geography — not a claim about the full national FEMA taxonomy.
+
+Checking `FLD_ZONE == "X"` alone would have silently flattened all of these into "safe." `check_flood_zone()` now checks `ZONE_SUBTY` against a `MINIMAL_HAZARD_SUBTYPES` list (currently just the one confirmed true-negative subtype) and returns `needs_geometry` accordingly. Validated on a real, confirmed-interior point in a 500-year floodplain near the test parcel: `in_special_flood_hazard_area: FALSE` (same as the test parcel) but `needs_geometry: TRUE` — the case the fix exists for.
+
+### For the visualization planning session
+
+Flood risk will be a variable in the property overview. Peter's expectation: most properties will fall in the true minimal-hazard subtype and won't need geometry rendered at all — just the plain-language "not likely" framing. The other ten subtypes need their own handling (whether that's rendering geometry, what language each one gets, how "reduced risk due to levee" or "future conditions" get communicated without either alarming or falsely reassuring a homeowner) — not decided here, flagged for that session specifically.
 
 ---
 
@@ -363,40 +439,60 @@ Southwest is the dominant direction in all four seasons (30–43%), strongest in
 **Current**: Not implemented
 **Target**: Styled OSM base map for regional orientation section
 **Action Items**:
-- [ ] Research OSM data acquisition methods
-- [ ] Test `osmdata` package
-- [ ] Research styling options
-- [ ] Implement acquisition function
+- [x] Research OSM data acquisition methods ✅ 2026-07-24
+- [x] Test `osmdata`/direct API access ✅ 2026-07-24 — tested direct Overpass calls, not the R package specifically
+- [ ] Research styling options — deferred to visualization stage
+- [ ] Implement acquisition function — deferred; extent/styling decisions not made yet
+
+### 2026-07-24 findings — confirmed on two levels: raw feature data and pre-rendered tiles
+
+**This is the one case where OSM is the right call, not the wrong one.** Parcels needed authoritative cadastral boundaries (OSM isn't built for that — see the Parcel section above). Base maps need roads, place names, and general context, which is exactly OSM's strength.
+
+**Two ways to get it, both confirmed live:**
+1. **Raw feature data** via Overpass API (`overpass-api.de/api/interpreter`), no auth. Standard Overpass QL query by bounding box. Test query for roads near 7 Hill St returned real, correct streets (Poole Road, Sunnybrook Road, South Wilmington Street).
+2. **Pre-rendered map tiles** via the standard OSM tile server (`tile.openstreetmap.org/{z}/{x}/{y}.png`), standard slippy-map tile math, no auth (identify with a User-Agent per their usage policy — this isn't for high-volume production use, worth a real tile-serving/caching plan before that). A 3×3 tile grid centered on the parcel rendered correctly: real streets, parks, schools, and place names for the actual neighborhood around 7 Hill St.
+
+Pre-rendered tiles are the faster path to a usable regional-context image if OSM's default cartographic style is acceptable as-is; raw Overpass data is the path if the report needs custom styling (matching KED's visual identity) rather than the standard OSM look. Which one (or both) gets used is a visualization-stage decision, not resolved here.
+
+### Open discussion for the visualization stage: base map styling, all scales
+
+**Peter's stated preference: grayscale.** The base map's job is orientation, not navigation — it answers "where is this parcel in its surroundings," not "how do I drive there." Every default OSM style (the standard tile rendering shown above included) is built for the opposite job: turn-by-turn navigation, which means it's color-heavy by design (road-class colors, land-use fills, POI icons). That's exactly the wrong visual weight for a base layer that's supposed to sit quietly behind the actual data — parcel boundary, slope, soils, whatever the section is illustrating. Color-heavy base map competes with color-coded data on top of it; the data gets lost in the noise.
+
+This needs to be resolved for every scale the report uses a base map at (state/ecoregion inset, watershed/neighborhood context, parcel-and-immediate-surroundings), not just one. Not solving it now — flagging it so it's a deliberate visualization-stage decision rather than something that defaults to "whatever the tile server gives you" by accident. Worth having in view when that conversation happens, not researched here: self-styled grayscale rendering of raw Overpass vector data (full control, matches our existing R-based pipeline), versus an existing grayscale/minimal tile provider (e.g., CartoDB Positron or similar "light"/monochrome basemap styles) as a faster but less controllable starting point.
 
 ---
 
-## Canopy Height (LiDAR)
+## Canopy Height (LiDAR) — and Building Footprints (new, not in original PRD)
 
-### Research Questions
-- [ ] Is LiDAR canopy height data available for all locations?
-- [ ] What is the best data source? (USGS 3DEP, state-specific)
-- [ ] How to extract canopy height from LiDAR?
-- [ ] What is the resolution/coverage?
-- [ ] Is this data necessary for initial implementation?
+Not in the original PRD, but relevant to the sun/shade/wind illustration goal in `WORKFLOW_SPEC.md` — a 2-story building casts a different shadow than a 1-story one, and canopy height/extent matters for shade and wind behavior.
 
-### Data Sources to Investigate
-- USGS 3DEP LiDAR
-- State-specific LiDAR programs
-- Other canopy height datasets
+### 2026-07-24: reconsidered the approach mid-session — worth recording why
 
-### Implementation Notes
-- Current implementation is placeholder
-- May be optional for initial implementation
-- Would be used for `rayshader` 3D visualization
+First attempt was deriving real height from raw LiDAR point clouds (Peter provided a sample `.las` file for the test parcel, classified into building/vegetation returns with ground removed). **Decided against this for v1.** The reasoning: every other source in this pipeline (parcel, DEM, soils, PRISM, wind, flood) is the same shape of work — retrieve an existing, authoritative, already-computed product and cite it. Point-cloud classification/normalization would have been us performing primary geospatial analysis ourselves, a different and bigger claim of correctness than citing a source, and it would have needed login-gated data access and new processing tooling (`lidR`) for a single data point. The PRD already has a simpler answer: structure height is a field-input variable, captured via practitioner site visit (phone LiDAR scan is one way to do that) — not something public data needs to supply. Point cloud processing stays a later step, not v1 acquisition.
 
-### Status
-**Current**: Not implemented (placeholder)
-**Target**: Canopy height data for 3D visualization (optional)
-**Action Items**:
-- [ ] Research LiDAR availability for NC
-- [ ] Determine if this is priority for initial implementation
-- [ ] Test data acquisition if proceeding
-- [ ] Implement if needed
+**Revised approach: 2D geometry (footprint/extent) from an authoritative existing source, paired with a placeholder height that field observation can adjust.** Same shape as everything else in this pipeline — acquire what's real and already computed (footprint/extent), don't fabricate precision (height) the data doesn't actually give us.
+
+### Building Footprints
+
+**Source:** NC's own per-county building footprint polygons, `https://sdd.nc.gov/staticdownloads/listbuildingfootprints/2020-2022` (catalog API) → per-county `.zip` containing an Esri File Geodatabase, readable via GDAL's OpenFileGDB driver (no proprietary driver needed). Confirmed exact match against the test parcel via `PID` == parcel's `parno`.
+
+**A field name looked promising and turned out not to be what it seemed — worth flagging as a caught mistake, not a clean win.** The schema (`OCCUP_TYPE`, `FLD_ZONE`, `STATIC_BFE`, `WIND_ZONE`, `FFE`, `NUM_STORY`, `LIDAR_LAG`, `LIDAR_HAG`...) is FEMA's Hazus building-inventory model, built for hazard/risk modeling. `LIDAR_HAG` looked like it might be real LiDAR-derived building height. Checked the actual values instead of assuming: `LIDAR_LAG` (315.3ft) and `LIDAR_HAG` (316.7-317.4ft) are only ~1.4-2.1ft apart — far too close together to be a building height. These are **Lowest/Highest Adjacent Grade**, standard Hazus terms for *ground* elevation around a building's base (used for flood-depth-above-grade calculations), not building height. `RISE` — the field that might have held real height — was `NA` on both buildings checked. `NUM_STORY` values (6010) are Hazus-coded, not literal story counts, and weren't decoded (no lookup table on hand, not needed for the footprint-only approach). **Conclusion: this source gives real, confirmed footprint geometry — genuinely useful — but not reliable building height.** That's not a gap in this approach; it's confirmation that the placeholder-height plan is the right one, not a shortcut around data that was actually available.
+
+`R/acquisition/building_footprint.R`: given a parcel and county, downloads (and caches) the county's footprint file, spatially filters to the parcel's buffered area, and attaches a configurable `assumed_height_ft` (default 30ft). Validated: 2 buildings found near the test parcel (the matched one at 1,237 sq ft footprint, plausible against its recorded 1,668 heated sq ft).
+
+### Land Cover / Canopy Extent
+
+**Source:** NLCD Tree Canopy Cover (USFS), confirmed live at `https://imagery.geoplatform.gov/iipp/rest/services/Vegetation/USFS_EDW_NLCD_TCC_CONUS/ImageServer` (no auth; the older `apps.fs.usda.gov` endpoint has been migrated, returns a clear redirect message rather than a silent failure). 30m resolution, percent canopy cover per pixel (0-100), current through 2024.
+
+**Real limitation worth being upfront about: 30m native resolution is coarse relative to a residential parcel.** A typical quarter-acre lot spans only a handful of pixels total — this is a coarse "how much canopy roughly here" read, not a tree-by-tree map. Same resolution-matching discipline as DEM applies (compute pixel size from the bbox, never oversample) — got this right from the start this time, no repeat of the DEM artifact.
+
+**Test case (7 Hill St, 100ft buffer):** real values (16-55% canopy cover across a 4×3 pixel grid), genuine local variation, plausible for a lot with mixed tree cover.
+
+`R/acquisition/canopy.R`: given a parcel, retrieves the raw percent-canopy raster (kept, not discarded — same "raw values in retrieval" principle as flood zones), thresholds it to a "has canopy" extent polygon at a configurable `threshold_pct` (default 0 — any measurable canopy, not a density cutoff), and attaches a configurable `assumed_height_ft` (default 55ft, the midpoint of the 50-60ft range Peter specified — adjustable to anything above the 30ft building-height placeholder for test runs).
+
+### NC OneMap Landcover — checked, stale, not usable
+
+NC OneMap does have `NC1Map_Landcover` (Feature and MapServer, plus a raster variant) — but it's dated **1996**. Thirty years old, from a one-time EarthSat-contracted statewide mapping project. Not usable for a current assessment. Ruled out, not pursued further.
 
 ---
 
