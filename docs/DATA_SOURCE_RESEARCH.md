@@ -19,7 +19,7 @@ This document tracks research tasks for data sources, API endpoints, data availa
 - [x] Parcel / base map ✅ 2026-07-22
 - [x] DEM (1m resolution) ✅ 2026-07-22
 - [x] Climate (PRISM) ✅ 2026-07-24
-- [ ] Wind (NOAA)
+- [x] Wind (NOAA) ✅ 2026-07-24
 - [ ] Watershed (HUC 06/12)
 - [ ] Ecoregions (EPA Level III)
 - [ ] Soils (SSURGO properties)
@@ -201,10 +201,24 @@ Sanity-checked: tmax > tmin every month, summer > winter, annual precipitation t
 **Current**: NOAA NCEI Data Service API (new system, no token required)
 **Target**: Wind rose from nearest station with seasonal averages
 **Action Items**:
-- [ ] Verify correct API endpoint and parameters
-- [ ] Research how to find nearest station IDs
-- [ ] Test wind rose generation from station data
-- [ ] Document seasonal wind patterns needed
+- [x] Verify correct API endpoint and parameters ✅ 2026-07-24
+- [x] Research how to find nearest station IDs ✅ 2026-07-24
+- [x] Test wind rose generation from station data ✅ 2026-07-24
+- [x] Document seasonal wind patterns needed ✅ 2026-07-24
+
+### 2026-07-24 findings — station-based daily data, no wind-rose product exists, build it ourselves
+
+**Went with NCEI daily-summaries + our own binning, not `rWind`.** The two approaches in the research questions above point in different directions: `rWind` pulls GFS gridded model output (real-time-ish, 50km), while the Implementation Notes describe a station-based NCEI attempt. Station data is the better fit — it's an actual observed record at a real point, matching how PRISM/soils/DEM already tie back to specific, citable sources, rather than a coarse model grid. No wind-rose product exists anywhere in NOAA's catalog; every path here means binning many years of raw observations into direction/frequency counts ourselves, which is what the old notes were gesturing at ("interpolate this from the downloaded dataset").
+
+**Endpoint confirmed live, no token:** `https://www.ncei.noaa.gov/access/services/data/v1?dataset=daily-summaries&stations={id}&startDate=...&endDate=...&dataTypes=AWND,WSF2,WDF2&units=metric&format=json`. The old "400 error" was very likely a parameter-naming issue, not a dead endpoint — this works cleanly once the params match the current docs.
+
+**Station selection needs a real filter, not just "nearest."** GHCND's station list (`https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt`, ~132K stations, fixed-width format) includes CoCoRaHS volunteer rain-gauge stations (`US1` prefix) that are often geographically closer to a given parcel than any real weather station, but **only measure precipitation, never wind.** Naively picking the nearest US-prefixed station picked one of these first and returned an empty wind column. Restricting to `USW` (Weather-Bureau-Army-Navy — airport/NWS sites with full instrumentation) fixes it. `USC` (COOP) stations have inconsistent wind reporting and are also worth avoiding for this purpose.
+
+**Test case (7 Hill St, Wake County):** nearest `USW` station is `USW00013722`, Raleigh-Durham International Airport — confirmed by name in the API response, not assumed. 10 years of daily data (2016-07-25 to 2026-07-21), 3,649 records, only 3 missing direction values.
+
+**Seasonal wind rose (8-point compass, % of days from each direction, mean speed m/s):**
+
+Southwest is the dominant direction in all four seasons (30–43%), strongest in summer (43% frequency, 3.69 m/s mean speed), with northeast as the consistent secondary direction. This matches known Piedmont NC climatology — summertime subtropical-ridge flow from the SW, more NE representation in cold-season frontal passages.
 
 ---
 
