@@ -18,7 +18,7 @@ This document tracks research tasks for data sources, API endpoints, data availa
 
 - [x] Parcel / base map ✅ 2026-07-22
 - [x] DEM (1m resolution) ✅ 2026-07-22
-- [ ] Climate (PRISM)
+- [x] Climate (PRISM) ✅ 2026-07-24
 - [ ] Wind (NOAA)
 - [ ] Watershed (HUC 06/12)
 - [ ] Ecoregions (EPA Level III)
@@ -142,9 +142,34 @@ Practitioner always has an exact, unambiguous address (confirmed with the client
 **Current**: PRISM package, but data structure is empty after download
 **Target**: Reliable temperature and precipitation data (seasonal averages)
 **Action Items**:
-- [ ] Debug PRISM data loading issue
-- [ ] Test alternative methods for extracting PRISM data
+- [x] Debug PRISM data loading issue ✅ 2026-07-24 — see findings below
+- [x] Test alternative methods for extracting PRISM data ✅ 2026-07-24
 - [ ] Research NOAA station data as alternative/complement
+
+### 2026-07-24 findings — root cause found, direct download validated, no package needed
+
+**Root cause of the "empty structure" bug:** `prism_archive_subset()` targets 30-year normals specifically, but normals were never served on PRISM's modern REST API (`services.nacse.org/prism/data/get/...`) — confirmed that service only carries recent monthly/daily "AN" (all-networks) data. Normals only ever lived on the direct file-distribution path. This wasn't a bug to fix in our code; the `prism` package (or our use of it) was pointed at the wrong distribution.
+
+**Validated direct-download path, no auth, no R package dependency:**
+```
+https://data.prism.oregonstate.edu/normals/us/4km/{element}/monthly/prism_{element}_us_25m_2020{month}_avg_30y.zip
+```
+- `{element}`: confirmed working for `ppt`, `tmax`, `tmin`, `tmean` (directory listing also shows `tdmean`, `vpdmax`, `vpdmin` at the same path, untested)
+- `{month}`: two-digit `01`–`12`
+- Each zip contains a GeoTIFF (~2.8MB) plus `.stn.csv` (station list used) and `.info.txt` (metadata) — loads directly into `terra`
+
+**Caching matters for production economics.** These are CONUS-wide grids, not parcel-clippable via the distribution service — every parcel in the same state hits the same file. Cache each element/month grid once (~2.8MB × 4 elements × 12 months ≈ 134MB total) and reuse across every future site; this is a one-time infrastructure cost, not a per-assessment cost, which matters for the $200–250 price point in `WORKFLOW_SPEC.md`.
+
+**Test case (7 Hill St, Raleigh, Wake County) — seasonal normals, Winter/Spring/Summer/Fall per the PRD's Nov-Jan/Feb-Apr/May-Jul/Aug-Oct grouping:**
+
+| | Winter | Spring | Summer | Fall |
+|---|---|---|---|---|
+| Precip (mm) | 89.4 | 89.5 | 110.7 | 116.1 |
+| Tmax (°C) | 13.4 | 17.6 | 29.4 | 26.9 |
+| Tmin (°C) | 0.9 | 3.9 | 17.6 | 15.3 |
+| Tmean (°C) | 7.2 | 10.7 | 23.5 | 21.1 |
+
+Sanity-checked: tmax > tmin every month, summer > winter, annual precipitation total (1,217mm ≈ 47.9in) is a close match to Raleigh's known ~46in annual average.
 
 ---
 
