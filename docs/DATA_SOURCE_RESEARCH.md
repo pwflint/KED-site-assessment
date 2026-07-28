@@ -27,6 +27,7 @@ This document tracks research tasks for data sources, API endpoints, data availa
 - [x] OpenStreetMap (base maps) ✅ 2026-07-24 — source located and retrievable; extent logic deferred to visualization stage
 - [x] Building Footprints (new, not in original PRD) ✅ 2026-07-24 — 2D geometry only, placeholder height; see Canopy Height section
 - [x] Canopy Height (LiDAR) ✅ 2026-07-24 — reconsidered: 2D extent + placeholder height, not LiDAR-derived height; see section below
+- [ ] Hydrography / River Linework (NHD) ⚠️ 2026-07-28 — identified during translate-phase visualization work; the specific named river a parcel's watershed drains to is confirmed reliable, but a general "other major rivers for context" set is not - see Hydrography section below
 
 ---
 
@@ -274,6 +275,40 @@ Standard ArcGIS REST point-intersection query against each layer (`geometryType=
 
 ---
 
+## Hydrography (River/Stream Linework)
+
+Identified 2026-07-28 while prototyping the regional-orientation image (translate-phase visualization work, not original acquisition scope). The watershed HUC polygons above communicate a drainage *boundary*, but a client doesn't intuitively read a boundary polygon as "your water goes here" — Peter's call was that the actual named river line (the HUC06's principal river) is more legible, with the parcel's own river highlighted against other major rivers shown for context.
+
+### Research Questions
+- [x] What is the right hydrography source for cartographic-scale (not analytical) river linework? ✅ 2026-07-28
+- [ ] How to reliably get a complete, continuous line for a named river that has dams/reservoirs along its course?
+- [ ] What's the right curated list of "other major NC rivers" to show for context?
+- [x] Where does neighborhood-scale local drainage (small creeks, ditches — not the named HUC06 river) come from? ✅ 2026-07-28 — City of Raleigh, confirmed. Not NHD, per the finding below. **City-specific: will need the equivalent county/municipal source whenever a parcel falls outside Raleigh city limits, not assumed to generalize statewide.**
+
+### 2026-07-28 findings — the parcel's own river is reliable; a general "other rivers" set is not
+
+**Source:** USGS National Hydrography Dataset, served via The National Map, `https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer`. No auth. Layer 4, "Flowline - Small Scale," is purpose-built for state-wide cartographic display (`minScale`/`maxScale` metadata confirm it's meant to render zoomed out, unlike the full-resolution flowline layers which would be unreadable clutter at this scale). Standard ArcGIS REST query, filterable by `GNIS_NAME` (exact river name) and geometry envelope.
+
+**Confirmed working:** querying `GNIS_NAME = 'Neuse River'` against an NC-wide envelope returns 266 real line segments forming a continuous, correct path from the parcel's area to the coast. This is reliable for "the parcel's own river" — the single most important line in the image — because the Neuse has no major reservoirs between Raleigh and the coast.
+
+**Real problem found, not a rendering bug:** tried building a curated "other major rivers" set (Cape Fear, Roanoke, Yadkin, Catawba, French Broad, Chowan, Tar, Pamlico — all confirmed present by name via `returnCountOnly` before use). Rendered, the Catawba River appeared as only a ~40-mile fragment hugging the SC border, not the full path across the Piedmont. Root cause checked, not assumed: the Catawba is dammed into a chain of reservoirs (Lake James, Lake Norman, Lake Wylie, etc.) — those stretches are classified in NHD as lake/reservoir waterbody features, not `GNIS_NAME = 'Catawba River'` line reaches, so a name-filtered query silently returns only the undammed fragments and looks complete when it isn't. Same shape of bug as the `LIDAR_HAG`/CoCoRaHS false leads elsewhere in this doc: a field/query that looks like it means "the whole river" doesn't, and only checking the count (not the actual geometry against a known path) would have missed it.
+
+**Not yet resolved:** a general-purpose "other major NC rivers for context" set needs each candidate river checked individually against its real course (reservoir-fragmented or not) before it's trustworthy - the Yadkin has a similar reservoir chain and is suspect for the same reason, untested. Deferred; the translate-phase work is proceeding with just the parcel's own highlighted river (Neuse, confirmed reliable) and no "other rivers" context layer for now.
+
+### 2026-07-28 findings — neighborhood-scale drainage is genuinely not in NHD near this parcel, confirmed not assumed
+
+While prototyping the neighborhood-scale main image, Peter raised that HUC-derived data (a watershed *boundary*) can't show actual small-scale drainage (the literal path water takes off a property toward a local creek), and guessed this would need a city/county source rather than NHD. Checked live rather than taking that as given: NHD layer 2 ("Line - Large Scale," the higher-resolution companion to the small-scale layer used above, meant for local/zoomed-in display per its `minScale`/`maxScale` metadata) returns **zero flowline features** in a tight envelope around the test parcel, named or unnamed. A wider envelope around the broader neighborhood does return some unnamed segments, so NHD isn't entirely empty in the area - but nothing at the immediate parcel-neighborhood scale. This confirms (not just guesses) that local drainage detail near this parcel isn't available from national hydrography at all.
+
+**Source found (Peter supplied the link, confirmed live):** City of Raleigh Hydrology layer, `https://services.arcgis.com/v400IkDOw1ad7Yad/arcgis/rest/services/Hydrology/FeatureServer/0`. No auth. Polyline geometry, native SR is ESRI WKID 102719 = EPSG:2264 (the same NC State Plane feet CRS already used throughout this codebase - no new CRS handling needed). Fields: `FTYPE` (`STREAM/RIVER`, `CANAL/DITCH`, `CONNECTOR`, `ARTIFICIAL PATH`), `NAME`, `RCH_CODE`. Queried near the test parcel: dense real local network, multiple segments explicitly named `"Walnut Creek"` right in the neighborhood, plus many unnamed `STREAM/RIVER`/`CANAL/DITCH` segments (the actual small tributaries/ditches HUC data can't show) and `CONNECTOR`/`ARTIFICIAL PATH` segments (network bookkeeping, not real surface features - exclude from display). This is exactly the neighborhood-scale drainage detail the HUC12 boundary can't provide.
+
+**Not yet built as an acquisition function** - used ad hoc in the same visualization prototype session as the river/ecoregion work above.
+
+### Status
+**Current:** No acquisition function yet — this was ad hoc exploratory code during a visualization sketch, not promoted to `R/acquisition/`.
+**Target:** A function returning the parcel's own principal river (by HUC06 name) reliably; the "other rivers" context set is explicitly out of scope until the reservoir-fragmentation problem is solved per-river.
+
+---
+
 ## Ecoregions (EPA Level III)
 
 ### Research Questions
@@ -459,6 +494,16 @@ Pre-rendered tiles are the faster path to a usable regional-context image if OSM
 **Peter's stated preference: grayscale.** The base map's job is orientation, not navigation — it answers "where is this parcel in its surroundings," not "how do I drive there." Every default OSM style (the standard tile rendering shown above included) is built for the opposite job: turn-by-turn navigation, which means it's color-heavy by design (road-class colors, land-use fills, POI icons). That's exactly the wrong visual weight for a base layer that's supposed to sit quietly behind the actual data — parcel boundary, slope, soils, whatever the section is illustrating. Color-heavy base map competes with color-coded data on top of it; the data gets lost in the noise.
 
 This needs to be resolved for every scale the report uses a base map at (state/ecoregion inset, watershed/neighborhood context, parcel-and-immediate-surroundings), not just one. Not solving it now — flagging it so it's a deliberate visualization-stage decision rather than something that defaults to "whatever the tile server gives you" by accident. Worth having in view when that conversation happens, not researched here: self-styled grayscale rendering of raw Overpass vector data (full control, matches our existing R-based pipeline), versus an existing grayscale/minimal tile provider (e.g., CartoDB Positron or similar "light"/monochrome basemap styles) as a faster but less controllable starting point.
+
+### 2026-07-28 findings — the visualization-stage decision above, resolved for the neighborhood-scale image only
+
+Self-styled rendering of our own Overpass road data was tried first (multiple iterations, see `docs/ILLUSTRATION_NOTES.md`) and rejected by Peter: it's not a base map, it's centerline strokes we drew ourselves, which reads differently from real cartographic tile imagery (proper road width/shape, established conventions) no matter how it's styled. Three tile providers were evaluated as the real alternative:
+
+- **Esri `Canvas/World_Light_Gray_Base` (raster):** confirmed live, stable (Esri-backed, addresses the "will this still exist" concern directly), but **confirmed by direct pixel inspection to bake street/place-name labels into the tiles** despite the Base/Reference service naming implying a label-free Base. It's a fused tile cache with no label toggle — structurally cannot deliver label-free output. Rejected on that basis alone, not a style preference.
+- **Esri `OpenStreetMap_v2` / `World_Basemap_v2` (vector, `.pbf`):** both use Esri-specific relative style paths and, for `World_Basemap_v2`, a vector source definition a generic MapLibre GL client can't resolve at all (style loads, zero tile requests ever fire). Not a simple swap into a static-image R pipeline — would need real adaptation work, not attempted further per Peter's explicit call not to sink time into it.
+- **Carto `light_nolabels` (raster):** confirmed live, confirmed genuinely label-free by direct tile inspection (no text anywhere, checked pixel-by-pixel). **Currently in use** for the neighborhood-scale image. **Unresolved risk, flagged by Peter and not dismissed:** Carto is a smaller/earlier-stage provider than Esri; free-tile terms have shifted before. Provider choice is explicitly deferred to when this project starts testing additional parcels/geographies — not settled here, do not treat Carto as a permanent decision.
+
+Implementation: `R/illustrate/basemap_tiles.R` (standard Web Mercator slippy-tile fetch/mosaic/reproject, provider-agnostic — swapping providers means changing one URL constant, not the fetch logic).
 
 ---
 
