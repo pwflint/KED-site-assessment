@@ -10,11 +10,11 @@
 ## State
 
 ```yaml
-phase: ANALYZE
+phase: CONSTRUCT
 status: COMPLETE
-current_task: "Bootstrapped project_config.md and workflow_state.md from repo docs + session history"
+current_task: "Built and validated watershed.R, ecoregion.R, basemap.R acquisition functions"
 blocked_by: null
-next_action: "Begin translate-step specification (step 3, docs/WORKFLOW_SPEC.md) - turning acquired technical data into plain-language, source-cited description. Also: build watershed.R/ecoregion.R/basemap.R acquisition functions (source-validated, not yet implemented) - needed before step 4 can render anything."
+next_action: "Begin translate-step specification (step 3, docs/WORKFLOW_SPEC.md) - turning acquired technical data into plain-language, source-cited description. All step 4 (regional/macro context) prerequisite sources are now built."
 ```
 
 ---
@@ -23,12 +23,11 @@ next_action: "Begin translate-step specification (step 3, docs/WORKFLOW_SPEC.md)
 
 *The living plan is `docs/WORKFLOW_SPEC.md` (the 8-step workflow) - this section tracks what's actively being worked, not a duplicate of it.*
 
-Acquisition layer (steps 1-2) is built and validated: parcel, DEM, soils, PRISM climate, wind, flood zones, building footprints, canopy extent — nine sources, each with a real bug caught and fixed during validation (see `docs/DATA_SOURCE_RESEARCH.md` for the per-source detail, don't re-derive from scratch).
+Acquisition layer (steps 1-2) is built and validated: parcel, DEM, soils, PRISM climate, wind, flood zones, building footprints, canopy extent, watershed (HUC06/HUC12), ecoregions (EPA Level III/IV), base map roads (OSM/Overpass) — twelve sources, each with a real bug caught and fixed during validation (see `docs/DATA_SOURCE_RESEARCH.md` for the per-source detail, don't re-derive from scratch).
 
 Not yet started:
 1. Translate (step 3) — no spec yet, next session's stated focus.
-2. Watershed/ecoregion/basemap acquisition functions — sources confirmed retrievable, not yet built as `R/acquisition/*.R` files (unlike the nine that are).
-3. Steps 4-8 — named and scoped at the "what must this convey" level in `docs/WORKFLOW_SPEC.md`; illustration/implementation approach deliberately not decided.
+2. Steps 4-8 — named and scoped at the "what must this convey" level in `docs/WORKFLOW_SPEC.md`; illustration/implementation approach deliberately not decided.
 
 ---
 
@@ -59,3 +58,4 @@ Not yet started:
 [2026-07-24] [CONSTRUCT/VALIDATE] Watershed (WBD), ecoregions (EPA), base maps (OSM) source-validated — extent/styling decisions deferred to visualization stage per Peter. Flood zones (FEMA NFHL) validated and corrected twice: first, the old "404 = not in a flood zone" assumption was wrong (coverage is comprehensive, real check is `SFHA_TF`); second, "Zone X" isn't one risk picture — only 1 of 11 real subtypes is a true negative. Building footprints (NC per-county) and canopy extent (NLCD TCC) validated after reconsidering and rejecting a raw-LiDAR-point-cloud approach (Peter provided a sample `.las` file; decided it was primary geospatial analysis rather than citing an existing authoritative product, unlike everything else in this pipeline). Caught a false lead: `LIDAR_HAG` looked like building height, wasn't (ground-elevation reference). PR #2 merged (watershed/ecoregion/basemap docs, flood zones, building footprints, canopy).
 [2026-07-24] [BLUEPRINT] Added workflow steps 4-8 to `docs/WORKFLOW_SPEC.md`, documented human-in-the-loop as an evidence-based build discipline (grounded in the bugs above, all caught by human review, none by the pipeline), noted the v2/v3 email-triggered-automation goal without committing to it.
 [2026-07-24] [ANALYZE] Bootstrapped `project_config.md` and this file from repo docs + session history, per Peter's request to prepare a fresh-agent starting point. Confirmed sufficient information exists in `docs/` + agentmemory to do this, with named open gaps (deployment target, public-repo test-data question) rather than invented answers.
+[2026-07-28] [CONSTRUCT/VALIDATE] Built `R/acquisition/watershed.R`, `ecoregion.R`, `basemap.R`. Verified live field schemas (not assumed from docs) against a real, non-address Raleigh coordinate before writing any code, then ran each function end-to-end: watershed returned HUC06 "Neuse"/030202 and HUC12 "Walnut Creek"/030202011101 (exact match to the doc's prior test-case values), ecoregion returned Level III "Piedmont"/45, Level II "Southeastern USA Plains", Level I "Eastern Temperate Forests", Level IV "45f"/Northern Outer Piedmont (also exact match), basemap returned 46 real, correctly-named local roads via Overpass. Basemap implements raw road-feature retrieval only (Overpass), not the pre-rendered-tile alternative — styling/extent decisions remain deferred to the visualization stage per existing docs. All step 4 prerequisite sources are now built; step 3 (translate) is next.

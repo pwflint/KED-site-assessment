@@ -249,7 +249,7 @@ Southwest is the dominant direction in all four seasons (30–43%), strongest in
 - [x] Research WBD as alternative to NHDPlus ✅ 2026-07-24
 - [x] Test HUC boundary acquisition from WBD ✅ 2026-07-24
 - [x] Research how to get watershed names/hierarchy ✅ 2026-07-24 — name comes directly on each HUC layer
-- [ ] Update acquisition script if needed — deferred; extent/clipping logic depends on visualization-stage decisions, not built yet
+- [x] Update acquisition script if needed ✅ 2026-07-28 — `R/acquisition/watershed.R` built and validated; returns the intersecting HUC06/HUC12 polygon and attributes, extent-widening logic still deferred to visualization stage
 
 ### 2026-07-24 findings — WBD confirmed, NHDPlus's replacement works cleanly
 
@@ -298,7 +298,7 @@ Standard ArcGIS REST point-intersection query against each layer (`geometryType=
 **Action Items**:
 - [x] Research EPA ecoregion data sources ✅ 2026-07-24
 - [x] Test data acquisition method ✅ 2026-07-24
-- [ ] Implement acquisition function — deferred; extent logic (state-wide inset vs. local only) is a visualization-stage decision, not built yet
+- [x] Implement acquisition function ✅ 2026-07-28 — `R/acquisition/ecoregion.R` built and validated; returns Level III/IV polygons and attributes for the intersecting point, `STATE_NAME` deliberately excluded (see finding above); state-wide inset extent logic still deferred to visualization stage
 
 ### 2026-07-24 findings — confirmed, plus one field that isn't trustworthy
 
@@ -442,7 +442,7 @@ Flood risk will be a variable in the property overview. Peter's expectation: mos
 - [x] Research OSM data acquisition methods ✅ 2026-07-24
 - [x] Test `osmdata`/direct API access ✅ 2026-07-24 — tested direct Overpass calls, not the R package specifically
 - [ ] Research styling options — deferred to visualization stage
-- [ ] Implement acquisition function — deferred; extent/styling decisions not made yet
+- [x] Implement acquisition function ✅ 2026-07-28 — `R/acquisition/basemap.R` built and validated; retrieves raw road-network features (highway=*) via Overpass only, not the pre-rendered-tile alternative; styling decisions still deferred to visualization stage
 
 ### 2026-07-24 findings — confirmed on two levels: raw feature data and pre-rendered tiles
 
