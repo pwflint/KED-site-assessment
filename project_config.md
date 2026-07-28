@@ -28,7 +28,7 @@ It is the agent's stable reference for this project's identity.*
 
 ## Architecture
 
-Two-mode pipeline per `docs/PRD.md`: a pre-visit brief (internal, data-only) and a post-visit client deliverable (data + practitioner annotation + synthesis). The build follows an 8-step workflow (`docs/WORKFLOW_SPEC.md`): define parcel/analysis boundary → acquire data → translate to plain language → illustrate regional/macro context → illustrate raw parcel-level data → analysis → synthesis → design strategies. Steps 1-2 are built and validated (nine sources, `R/acquisition/`); step 3 (translate) is the next focus; steps 4-8 are specced at the level of *what* each must do, not *how* it's illustrated — that's deliberately still open.
+Two-mode pipeline per `docs/PRD.md`: a pre-visit brief (internal, data-only) and a post-visit client deliverable (data + practitioner annotation + synthesis). The build follows an 8-step workflow (`docs/WORKFLOW_SPEC.md`): define parcel/analysis boundary → acquire data → translate to plain language → illustrate regional/macro context → illustrate raw parcel-level data → analysis → synthesis → design strategies. Steps 1-2 are built and validated (twelve sources, `R/acquisition/`); step 3 (translate) is the next focus; steps 4-8 are specced at the level of *what* each must do, not *how* it's illustrated — that's deliberately still open.
 
 ---
 
@@ -60,7 +60,7 @@ Two-mode pipeline per `docs/PRD.md`: a pre-visit brief (internal, data-only) and
 | `docs/DATA_SOURCE_RESEARCH.md` | Per-source findings: endpoints, gotchas, bugs caught, data-quality caveats |
 | `docs/WORKFLOW_SPEC.md` | The 8-step workflow, human-in-the-loop discipline, business framing, deferred items |
 | `docs/PROMPT_RUNBOOK.md` | Report-generation prompt jobs (section interpretation vs. synthesis copy-edit) — parked pending more validated sources |
-| `R/acquisition/*.R` | One file per validated data source: parcel, dem, soil, climate, wind, flood, building_footprint, canopy |
+| `R/acquisition/*.R` | One file per validated data source: parcel, dem, soil, climate, wind, flood, building_footprint, canopy, watershed, ecoregion, basemap |
 | `.cursor/rules/oak-workflow.mdc`, `.cursor/rules/git-workflow.mdc` | Dual-VCS rules |
 
 ---
