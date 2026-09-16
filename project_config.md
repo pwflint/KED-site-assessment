@@ -28,13 +28,14 @@ It is the agent's stable reference for this project's identity.*
 
 ## Architecture
 
-Two-mode pipeline per `docs/PRD.md`: a pre-visit brief (internal, data-only) and a post-visit client deliverable (data + practitioner annotation + synthesis). The build follows an 8-step workflow (`docs/WORKFLOW_SPEC.md`): define parcel/analysis boundary → acquire data → translate to plain language → illustrate regional/macro context → illustrate raw parcel-level data → analysis → synthesis → design strategies. Steps 1-2 are built and validated (twelve sources, `R/acquisition/`). Step 3/4 (translate, illustrated as a visual-first exercise per Peter — prose is explicitly deferred) has two settled prototypes at regional/neighborhood scale (`R/illustrate/`, findings in `docs/ILLUSTRATION_NOTES.md`); that thread is paused, with parcel-scale illustration (step 5) the next focus. Steps 6-8 remain specced at the level of *what* each must do, not *how*.
+Two-mode pipeline per `docs/PRD.md`: a pre-visit brief (internal, data-only) and a post-visit client deliverable (data + practitioner annotation + synthesis). The build follows an 8-step workflow (`docs/WORKFLOW_SPEC.md`): define parcel/analysis boundary → acquire data → translate to plain language → illustrate regional/macro context → illustrate raw parcel-level data → analysis → synthesis → design strategies. Steps 1-2 are built and validated (twelve sources, `R/acquisition/`). Step 3/4/5 (translate, illustrated as a visual-first exercise per Peter — prose is explicitly deferred) now has settled prototypes at all three scales — regional, neighborhood, and parcel (`R/illustrate/`, findings in `docs/ILLUSTRATION_NOTES.md`). Steps 6-8 remain specced at the level of *what* each must do, not *how*.
 
 ---
 
 ## Critical Patterns & Conventions
 
 - **Never oversample a raster export.** Requesting more pixels than a bbox supports at native resolution produces fake blocky/grid-patterned artifacts in derived calculations (slope, in particular) that can look like real findings. Always compute pixel size from native resolution before requesting `size` on any `exportImage` call. (Found the hard way on DEM; documented in `docs/DATA_SOURCE_RESEARCH.md`.)
+- **Mask the DEM to exclude building footprints before any terrain computation (slope, aspect, contours, hillshade).** The DEM's bare-earth void-fill under a structure is a flat interpolated surface with a sharp edge; any terrain derivative computed across that edge produces a fabricated artifact that can exactly trace the building's perimeter. Confirmed by overlaying computed slope against the real building footprint. See `R/illustrate/parcel_building_mask.R` and `docs/ILLUSTRATION_NOTES.md`'s parcel-scale section.
 - **Maintain raw field values in acquisition; collapse/classify at translate/synthesis, not at retrieval.** Acquisition functions return raw source fields (e.g., `FLD_ZONE`/`ZONE_SUBTY`/`SFHA_TF` for flood, not a pre-collapsed risk label). Established explicitly during the flood-zone work.
 - **Prefer state/county-authoritative sources over generic/global ones, verified per use case, not by default.** OSM is wrong for cadastral parcels, right for base-map roads/places — the same source can be right or wrong depending on what's being asked of it.
 - **Verify before presenting, always.** Don't assume a field means what its name suggests (`LIDAR_HAG` looked like building height; wasn't). Don't assume an old "blocked" status is still true (PRISM, watershed, flood zones were all wrongly diagnosed in the prior attempt). Check live, check real values, check known-answer locations as sanity checks.
@@ -63,7 +64,7 @@ Two-mode pipeline per `docs/PRD.md`: a pre-visit brief (internal, data-only) and
 | `docs/ILLUSTRATION_NOTES.md` | Translate/illustrate-step design decisions, judgment calls, rejected approaches — the layer above DATA_SOURCE_RESEARCH.md (sources) |
 | `docs/DESIGN_SYSTEM.md` | Finished-output visual design — color/type/layout tokens for the client-facing page itself, separate from illustration content decisions |
 | `R/acquisition/*.R` | One file per validated data source: parcel, dem, soil, climate, wind, flood, building_footprint, canopy, watershed, ecoregion, basemap |
-| `R/illustrate/*.R` | Prototype illustration functions: `regional_inset.R` (state-scale), `neighborhood_context.R` (neighborhood-scale), `basemap_tiles.R` (shared tile-fetch helper) |
+| `R/illustrate/*.R` | Prototype illustration functions: `regional_inset.R` (state-scale), `neighborhood_context.R` + `basemap_tiles.R` (neighborhood-scale), `parcel_base_map.R` + `parcel_slope_drainage.R` + `parcel_building_mask.R` (parcel-scale) |
 | `.cursor/rules/oak-workflow.mdc`, `.cursor/rules/git-workflow.mdc` | Dual-VCS rules |
 
 ---

@@ -16,7 +16,7 @@ This document tracks design decisions, judgment calls, and rejected approaches f
 
 **Guiding principle, stated explicitly by Peter and worth repeating before every session that touches this work:** the images described here are prototypes, not finished products. They are sketches testing whether a specific translation idea — shifting a client's frame of reference from social space (streets, neighbors) to ecological space (watershed, ecoregion, geomorphology) — actually works, before any Quarto/production design work begins. Do not treat settled parameters (buffer sizes, thresholds, color choices) as final; they are what worked for one test parcel (7 Hill St, Raleigh, Wake County), not validated defaults.
 
-**Current focus has shifted to parcel-scale illustration** (not neighborhood/regional scale) — see `docs/WORKFLOW_SPEC.md` step 5. The two artifacts below are paused, not abandoned.
+**Parcel-scale illustration (step 5) is now also prototyped** — see the section below. Regional and neighborhood scale (below) remain paused, not abandoned.
 
 **Output format, flagged 2026-07-28, not resolved:** every artifact described here is a static raster PNG, produced by base R/`terra` plotting. That was the right choice for fast prototyping and critique, but it is not the production format. The final deliverable renders on a web page (HTML/Quarto), and Peter's stated reference for output quality (the `cursor.com/insights` report reviewed at the start of this work) is a scroll-telling, vector-native format, not a stack of embedded images. Whether these R-generated graphics become SVG output, get rebuilt as web-native (JS/Observable/D3, per the Quarto direction already agreed), or something else is explicitly deferred to production/application-build time — do not assume PNG carries forward, and do not let "it looks right as a PNG" stand in for "it will look right in the actual deliverable."
 
@@ -26,7 +26,7 @@ This document tracks design decisions, judgment calls, and rejected approaches f
 
 - [x] Regional-scale inset (state-scale ecoregion + river context) — prototype settled, `R/illustrate/regional_inset.R`
 - [x] Neighborhood-scale main image (contours + local hydrology + watershed boundary) — prototype settled, `R/illustrate/neighborhood_context.R`
-- [ ] Parcel-scale illustration — not started, next focus
+- [x] Parcel-scale illustration, two graphics — prototypes settled, `R/illustrate/parcel_base_map.R`, `parcel_slope_drainage.R`, `parcel_building_mask.R`
 - [ ] Prose for any of the above — explicitly deferred by Peter until the writing approach itself is validated; do not draft unprompted
 
 ---
@@ -92,3 +92,35 @@ Three providers were evaluated for a "quiet, no-label" tile backdrop:
 - Standard extent sizing (see above)
 - Promoting `fetch_raleigh_hydrology()` out of `neighborhood_context.R` into a proper `R/acquisition/` function once a second (non-Raleigh) source is found and the pattern is proven across more than one city
 - Label orientation — all labels currently render horizontally rather than following the geometry they annotate (a road, the watershed boundary). Known, named as acceptable for a prototype.
+
+---
+
+## Parcel-scale illustration (`R/illustrate/parcel_base_map.R`, `parcel_slope_drainage.R`, `parcel_building_mask.R`)
+
+**Job:** two paired graphics, per Peter's explicit split — one factual, one interpretive. Graphic 1 shows real, attributable ground data (topography as contours, the building as a flat shape, the parcel line) with no derived judgment calls. Graphic 2 layers interpretation on top (slope, drainage direction, an erosion-risk zone) computed from the same DEM but never rendered as raw pixels.
+
+### The finding that shaped everything else here: the DEM lies under buildings
+Peter's original concern going in was resolution (a 15ft buffer gives only ~26×48 native pixels). That's real, but a bigger problem was found while checking it: DEM slope/aspect/hillshade computed across a building footprint traces a fabricated elevated-slope "ring" that **exactly matches the real building footprint's perimeter** (confirmed by overlaying the two, not assumed from the shape alone) — the DEM's bare-earth void-fill under a structure is a flat interpolated surface with a sharp edge, and any terrain derivative computed across that edge reads as fake slope. At neighborhood scale this was background texture among thousands of similar artifacts; at parcel scale, with a building covering a large share of a tiny frame, it can dominate the result. `parcel_building_mask.R`'s `mask_dem_to_exclude_building()` exists specifically to prevent this — mask before any terrain computation, not after.
+
+**A second, related finding:** `get_building_footprints()` can return a neighboring parcel's building too (anything in the search buffer, not just the subject parcel). Confirmed by comparing `PID` against the parcel's own `parno` — one of the two buildings returned for the test parcel belonged to a neighbor. `get_own_building_footprint()` filters to the real match; don't assume the first/only result returned is the subject parcel's.
+
+### Graphic 1 (actual data) — settled composition
+- Contours from the parcel's own DEM, **masked to exclude the building footprint before contouring** (not after) — this alone removed the fake artifact ring entirely, confirmed by direct comparison
+- **0.25 ft interval / 1 ft index**, both grayscale, index distinguished by darker gray only (not weight) — chosen by comparing 1ft/0.5ft/0.25ft/0.1ft renders on the same DEM: 1ft was too sparse to show real shape (Peter's original complaint, correct), 0.1ft started looking like amplified noise or a raster-edge artifact rather than real ground (no documented vertical-accuracy figure for this DEM exists to confirm exactly where that line is - a visual judgment call, not a measured one)
+- Building footprint: flat 40% gray fill, no attempt to show what's under the roof
+- Parcel boundary: black dashed line
+- **Canopy deliberately omitted**, not just forgotten: NLCD Tree Canopy Cover is 30m native resolution, and a parcel-scale display extent (~150ft) is smaller than one native pixel. The canopy polygon technically returns `has_canopy = TRUE` but covers the entire frame edge-to-edge — a single coarse pixel's yes/no answer, not real tree-crown geometry. Rendering it as a shape would repeat the exact false-precision mistake the building masking exists to avoid. Not resolved with a workaround, correctly left out.
+
+### Graphic 2 (interpretive) — settled composition
+- Arrows on a sample grid across the open-ground portion of the parcel (masked around the building, same DEM): direction from DEM aspect (downslope), length scaled to slope %, labeled with slope % rounded to the nearest whole number
+- An "area of particular risk" zone: ground over the same 20%-grade NRCS-style erosion threshold already established in `dem.R`'s `summarize_topography()` — translucent orange fill, real threshold reused, not a new one invented for this graphic
+- Same building fill and dashed parcel boundary as Graphic 1, for visual consistency between the pair
+
+### Real bugs found building Graphic 2, in order
+1. **Arrows and labels drifting outside the parcel boundary** — the first grid spanned the full display buffer (fetched wide so `terrain()` has valid neighbors at the parcel edge, per the same principle already documented in `dem.R`), not just the parcel itself. A client-facing "your parcel" graphic showing data past the property line is a real content error. Fixed by restricting the sample grid to points actually inside the parcel polygon.
+2. **A label landing on the building fill, and a real coverage gap on the whole right side of the building** — traced precisely, not guessed: overlaying the valid-data raster against the parcel and building confirmed real slope data exists everywhere outside the footprint, including the ~23ft gap to the right of the building. The gap was a pure grid-alignment artifact (spacing + building-clearance buffer just didn't happen to place a column in that strip), not a data limitation.
+3. **Tightening the grid to fix the gap reintroduced label collisions** that simple point-to-point distance thinning couldn't catch, because the collisions came from variable label-arrow *length* (steeper slope → longer arrow → label pushed further, into a neighbor's space), not from sample points being too close together. Manual spacing heuristics were tried twice and each fix traded one problem for another. Resolved by rebuilding the graphic in `ggplot2` + `ggrepel` (`geom_label_repel`) instead of base R `text()` — the same tool `regional_inset.R` already uses for exactly this class of problem. Real collision-aware placement, not another round of hand-tuned offsets.
+
+### Explicitly deferred / not validated generally
+- All grid/threshold parameters (`grid_spacing_ft`, `bldg_clearance_ft`, the focal smoothing window, the 0.25ft contour interval) were tuned against one small (0.14 acre), rectangular, one-building parcel. Untested on a larger or irregularly-shaped lot, or one with multiple structures.
+- The canopy-at-parcel-scale question isn't solved for cases where it matters more (e.g., a heavily wooded lot) — it's just correctly absent here, not designed around yet.
