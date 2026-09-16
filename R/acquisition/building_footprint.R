@@ -35,6 +35,7 @@ get_building_footprints <- function(parcel_sf, county, buffer_ft = 30,
   if (!dir.exists(extract_dir)) {
     url <- get_county_building_footprints_url(county)
     download.file(url, zip_path, quiet = TRUE, mode = "wb")
+    dir.create(extract_dir, showWarnings = FALSE, recursive = TRUE)  # unzip() does not create exdir itself
     unzip(zip_path, exdir = extract_dir)
   }
 
