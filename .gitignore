@@ -16,3 +16,6 @@
 # Logs / temp
 *.log
 *.tmp
+
+# Generated client reports (contain real addresses — this repo is public)
+output/

@@ -1,7 +1,7 @@
 ---
 author: peter
 created: '2026-07-28'
-modified: '2026-07-28'
+modified: '2026-09-17'
 status: development
 tags:
   - domain/design
@@ -11,51 +11,178 @@ type: project
 ---
 # Output Design System
 
-This document is about the **finished-output visual design** — page chrome, typography, color, layout rhythm — for the client-facing deliverable. It is deliberately separate from `docs/ILLUSTRATION_NOTES.md`, which covers *what data goes into* each illustration and the judgment calls behind it, not how the surrounding page looks.
+This document is the **design system specification** for the client-facing site assessment deliverable. It covers page chrome, typography, color, layout, data visualization palette, and component inventory. It is deliberately separate from `docs/ILLUSTRATION_NOTES.md`, which covers *what data goes into* each illustration and the judgment calls behind it.
 
-**Status: early, prototype-derived, not approved.** These tokens came out of one quick scroll-simulation mockup (2026-07-28), built to test whether the two settled regional/neighborhood illustrations read well in sequence. Peter confirmed the styling direction is "worth preserving" — that's a green light to keep building on it, not a sign-off on a finished brand system. Treat everything below as the current working direction, not a locked spec.
+**Status:** Active development. Built in a dedicated design-system project (Omelette) that merges the KED marketing system's paper-tier palette with a warmer, engagement-first ground. The system is the binding visual reference for any agent generating report output.
 
-**Origin:** modeled on the `cursor.com/insights` report reviewed at the start of this translate-phase work — restrained editorial register, one accent color, generous whitespace, card-per-section rhythm. See `docs/ILLUSTRATION_NOTES.md` for how that reference shaped the individual illustrations; this document is the page-chrome half of the same conversation.
+**Origin:** The KED marketing site is monochrome chrome — black, white, neutral gray. The site assessment product breaks from that intentionally: the document is warmer, more engaging, and uses color purposefully for data differentiation. The paper-tier color families from the KED spec package (originally designed as Vectorworks fills) become the data visualization palette. The marketing system's Amatic SC display face is replaced with Cabin — a humanist sans that reads as calm and professional for an assessment context.
+
+**Design system project:** The full token set, component classes, specimen pages, and a scrollytelling template live in the Omelette design-system project titled "KED Site Assessment." Any agent building report output should bind that design system and use its tokens and classes rather than inventing values.
 
 ---
 
 ## Design principle
 
-**The page's accent color comes from the data, not from a separate brand decision.** The one accent used in the mockup (a warm brown, `#9a6a2f` light / `#c99a5c` dark) is the exact color already used for the watershed-boundary line in both illustrations — chosen deliberately so page chrome (eyebrow labels, dividers) speaks the same color language as the maps themselves, rather than competing with an unrelated brand color. If the palette below changes, keep this principle: pull the accent from whatever the data visualization already uses, don't invent one separately.
+**The page's accent color comes from the data, not from a separate brand decision.** The UI accent (`#9a6a2f`, a warm ochre) is the same color used for watershed-boundary lines in the map illustrations. Page chrome — eyebrow labels, links, focus rings — speaks the same color language as the visualizations. If the data palette changes, the accent follows.
 
-## Color tokens
+---
+
+## Color
+
+### Ground and chrome
 
 | Token | Light | Dark | Use |
 |---|---|---|---|
-| `--bg` | `#faf9f5` | `#1c1b18` | Page background — warm, not pure white/black |
-| `--ink` | `#2b2a26` | `#eeece5` | Primary text |
-| `--muted` | `#8c8579` | `#9a9488` | Captions, secondary text |
-| `--accent` | `#9a6a2f` | `#c99a5c` | Eyebrow labels, dividers — pulled from the watershed-boundary map color, see principle above |
-| `--card` | `#ffffff` | `#242220` | Card background behind each illustration |
-| `--border` | `#e8e4db` | `#3a3733` | Card borders, dividers |
+| `--bg` | `#f0ece3` | `#1e1b16` | Page background — warm stone |
+| `--surface` | `#f7f4ed` | `#282420` | Card/section backgrounds |
+| `--surface-elevated` | `#fbf9f5` | `#322e28` | Viz card backgrounds |
+| `--ink` | `#2c2620` | `#e8e2d6` | Primary text |
+| `--heading` | `#3a3228` | `#d8d0c2` | All headings |
+| `--muted` | `#887d6c` | `#9a9488` | Secondary text |
+| `--caption` | `#9e9484` | `#7a7468` | Captions, source citations |
+| `--line` | `#d4cab4` | `#3a3733` | Borders, dividers |
+| `--accent` | `#9a6a2f` | `#c99a5c` | Links, eyebrows, focus rings |
 
-Both themes defined via CSS custom properties, redefined under `@media (prefers-color-scheme: dark)` and `:root[data-theme="dark|light"]` so the viewer's explicit toggle always wins over the OS preference. See the mockup source for the exact pattern.
+No brand hue in chrome beyond the ochre accent. No gradients, no tinted section backgrounds.
+
+### Data visualization palette — paper tier
+
+Ten hue families × eight steps (01 lightest → 08 darkest), each named for a landscape element:
+
+| Family | Data domain | Typical fill range |
+|---|---|---|
+| Ember | Erosion risk, thermal stress, soil heat | 03–05 |
+| Ochre | Earth, grade, topography | 03–05 |
+| Gold | Sunlight, solar exposure | 03–05 |
+| Canopy | Tree cover, vegetation | 03–05 |
+| Groundcover | Turf, sedum, lowest layer | 03–05 |
+| Understory | Shade, fern, deep cover | 03–05 |
+| Chicory | Reserved | 03–05 |
+| Coneflower | Species diversity, bloom | 03–05 |
+| Water | Hydrology, drainage, precipitation | 03–05 |
+| Bloom | Bright highlights only — never fills | any |
+
+**Step rules:** 01–02 for background tints. 03–05 for primary fills (readable on the warm ground). 06–08 for text labels on filled areas.
+
+**Screen-tier accents** (full-strength: `--screen-ember`, `--screen-canopy`, `--screen-water`, etc.) are for emphasis inside visualizations only — callout highlights, active data points. Never for backgrounds or chrome.
+
+### Semantic aliases
+
+Pre-mapped tokens for the most common data domains:
+
+```
+--viz-soil       (ochre-04)
+--viz-erosion    (ember-04)
+--viz-water      (water-04)
+--viz-sun        (gold-04)
+--viz-vegetation (canopy-04)
+--viz-shade      (understory-04)
+--viz-diversity  (coneflower-04)
+--viz-cost       (ochre-05)
+```
+
+Each also has `-fill` (step 02, for light tints) and `-text` (step 07, for labels on fills) variants.
+
+---
 
 ## Typography
 
-System sans stack only so far: `-apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif`. Deliberate choice, not a placeholder — avoids the font-CDN restrictions Artifacts run under, and avoids reaching for Inter/Space Grotesk as a default. **Open question:** whether production (Quarto/HTML, not an Artifact) should use a real embedded webfont instead, since Quarto isn't under the same CSP restriction. Not decided.
+| Role | Face | Weight | Size |
+|---|---|---|---|
+| Display / headings | Cabin | 700 | `--size-h1` through `--size-h3` (fluid clamps) |
+| Body | Poppins | 300 | 1.0625rem / 1.6 line-height |
+| Eyebrow labels | Poppins | 500 | 0.7rem, uppercase, 0.12em tracking |
+| Captions | Poppins | 300 | 0.85rem |
+| Stat values | Cabin | 700 | `--size-h2` |
+| Chart axis labels | Poppins | 400 | `--size-small` |
+| Chart titles | Cabin | 700 | `--size-h3` |
 
-Scale used so far: eyebrow labels ~0.7rem, uppercase, 0.12em letter-spacing; section headings ~1.05rem; body/caption ~0.8-0.92rem; all at 1.6 line-height for readability.
+Cabin loaded via Google Fonts. Poppins self-hosted from font files.
+
+---
 
 ## Layout
 
-- Single column, ~760px max-width, centered — matches "one thing at a time" scroll-telling, not a dashboard
-- Each illustration in its own white/dark card: `1px` border, subtle drop shadow (`0 12px 28px -18px`), no rounded-corner-everywhere treatment (a flat 4px radius, not the generic `rounded-lg` look)
-- Eyebrow label (numbered — "01 — Regional context") above each card, factual caption below naming the source script, not persuasive copy
-- Generous vertical rhythm between sections (~5.5rem) — space is doing the separating, not rules or dividers
-- A thin vertical rule runs behind the whole sequence, reinforcing "this is one continuous scroll," not a series of disconnected images
+- Single centered column at 760px (`--measure`), with 960px (`--measure-wide`) for wide visualizations
+- Each report section is a full-viewport scroll fold (`.scroll-section`)
+- Generous vertical rhythm: 5.5rem between sections (`--space-8`)
+- Every visualization sits in a `.viz-card` — elevated surface with subtle shadow
+- Numbered eyebrow labels above each section ("01 — Regional context")
+- Sticky header with hamburger nav (left) and KED wordmark (right)
+- Subtle footer: company name linked to website, info@ email
 
-## Motion
+---
 
-One deliberate moment, not scattered effects: each card fades and rises slightly into view on scroll (`IntersectionObserver`, opacity + `translateY(14px)`, 0.6s ease). Respects `prefers-reduced-motion` (skips straight to visible). **Open question:** whether production uses the same technique or something native to whatever rendering stack the Quarto build ends up using (see `docs/ILLUSTRATION_NOTES.md`'s output-format flag — this mockup is HTML/CSS/JS, not necessarily what production renders through).
+## Shape and elevation
 
-## Not yet addressed
+- **Radii:** 12px cards and buttons, 8px media and inputs, 999px pills for tags
+- **Elevation:** `--shadow-viz` on viz cards, `--shadow-dialog` on modals, no shadow at rest on content cards
+- **Motion:** Scroll-reveal animation (fade + rise 14px, 0.6s), color transitions at 0.2s. Respects `prefers-reduced-motion`. No transforms, scale, bounce, or parallax.
 
-- No real content hierarchy tested beyond two sections — unknown how this holds up with 5-8 report sections, sub-navigation, or a table of contents
-- No mobile/narrow-viewport treatment tested
-- No print/export treatment (PRD mentions export capability)
+---
+
+## Icons
+
+Lucide icons where functional (navigation, export, theme toggle). Stroke-width 2, `currentColor`. No decorative icons, no emoji.
+
+---
+
+## Data visualization directions
+
+### General rules
+
+1. **One dominant family per visualization.** A soil chart uses ochre; a drainage map uses water. Second family for comparison. Three families maximum per graphic.
+2. **Step consistency.** Same step range across all categories in a graphic.
+3. **Labels on fills** use the -07/-08 step of the fill's own family, not `--ink`.
+4. **Bloom is highlights only** — a marker, a data point. Never a fill.
+5. **Pair color with text.** Never color alone.
+6. **White/elevated surfaces frame visualizations** — every graphic in a `.viz-card`.
+
+### By section
+
+- **Regional Orientation:** Canopy-02 fill, water-04 rivers, bloom-05 parcel marker
+- **Topography:** Ochre family for slope categories (01 flat → 05 steep)
+- **Hydrology:** Water family throughout, ember-03 for flood zones
+- **Climate:** Rotate by season — Water (winter), Canopy (spring), Gold (summer), Ember (fall)
+- **Soils:** Ochre fills, understory → ember gradient for drainage quality
+- **Microclimate:** Gold → Ember for heat accumulation, canopy for tree cover
+- **Species Diversity:** Coneflower primary, canopy secondary
+- **Budget:** Ochre-05 base, gold for comparisons
+
+---
+
+## Dark mode
+
+Both light and dark themes defined via CSS custom properties, toggled by `data-theme="dark"` on `:root`. For automatic OS detection, include:
+
+```js
+if (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme:dark)').matches) document.documentElement.dataset.theme = 'dark';
+```
+
+---
+
+## Components
+
+| Class | Purpose |
+|---|---|
+| `.wrap` / `.wrap-wide` | Centered content measure |
+| `.eyebrow` | Numbered section label |
+| `.scroll-section` | Full-viewport story fold |
+| `.viz-card` + `.viz-caption` | Illustration container |
+| `.stat` + `.stat-value` + `.stat-label` + `.stat-row` | Metric callout |
+| `.legend` + `.legend-item` + `.legend-swatch` | Data legend |
+| `.btn` + `.btn-primary/secondary/ghost` | Actions |
+| `.card` | Content card |
+| `.table` | Data table |
+| `.dialog-backdrop` + `.dialog` | Modal overlay |
+| `.tag` + `.tag-soil/water/vegetation/sun/erosion/diversity` | Domain tags |
+| `.scroll-reveal` | Scroll entrance animation |
+
+---
+
+## Open questions (carried from prior version)
+
+1. Content hierarchy untested beyond two sections — how does this hold with 5–8 sections, sub-navigation, or a table of contents?
+2. Mobile/narrow-viewport treatment not yet tested
+3. Print/export treatment for 11×17 tabloid not built
+4. Whether HTML interactivity supersedes the printed format

@@ -1,0 +1,391 @@
+# Site Assessment Report — Layout Design Agent Prompt
+
+> **Context:** This prompt is for the Layout Design Agent (Claude Code / Cursor) working in the `pwflint/KED-site-assessment` repository. It generates the client-facing HTML report from acquired site data. The agent receives a site data payload from the acquisition/translate pipeline and produces a standalone HTML file.
+
+---
+
+## Role
+
+You are the Layout Design Agent for the KED site assessment product. You generate a single, self-contained HTML document — a scrollytelling report that situates a residential client within their regional and climatic context. The report must stand alone without practitioner explanation.
+
+## Repository context
+
+Read these files before generating output:
+
+- `docs/PRD.md` — product requirements, report sections, user context
+- `docs/WORKFLOW_SPEC.md` — the 8-step workflow and build discipline
+- `docs/ILLUSTRATION_NOTES.md` — how each visualization was built, what was rejected and why
+- `docs/DESIGN_SYSTEM.md` — visual tokens, color families, typography, layout rules
+- `project_config.md` — constraints, conventions, critical patterns
+
+The design system CSS file should be embedded or linked from a known path in the output directory. The full token set, component classes, and color families are defined there.
+
+## Input: site data payload
+
+The acquisition pipeline produces a JSON object per parcel. Your input looks like this:
+
+```json
+{
+  "client_name": "string",
+  "address": "string",
+  "coordinates": { "lat": 0.0, "lon": 0.0 },
+  "assessment_date": "YYYY-MM-DD",
+  "practitioner": "Peter W Flint",
+
+  "ecoregion_l3": "Piedmont",
+  "ecoregion_l4": "Northern Outer Piedmont",
+  "ecoregion_description": "string — plain language, pre-translated",
+  "huc06_name": "Neuse",
+  "huc12_name": "string",
+  "regional_map_svg": "string | null — inline SVG from R/illustrate/regional_inset.R",
+  "neighborhood_map_svg": "string | null — from R/illustrate/neighborhood_context.R",
+
+  "elevation_change_ft": 12,
+  "max_slope_pct": 18,
+  "parcel_area_acres": 0.14,
+  "slope_distribution": {
+    "flat_0_2": 65,
+    "gentle_2_8": 22,
+    "moderate_8_15": 9,
+    "steep_15_plus": 4
+  },
+  "erosion_risk_pct": 4,
+  "contour_map_svg": "string | null",
+  "slope_drainage_map_svg": "string | null",
+  "topo_description": "string",
+
+  "watershed_name": "string",
+  "flood_zone": "Zone X",
+  "flood_zone_description": "string",
+  "drainage_direction": "string",
+  "hydro_map_svg": "string | null",
+  "hydro_description": "string",
+
+  "seasonal_precip": { "winter": 3.4, "spring": 3.8, "summer": 4.6, "fall": 3.1 },
+  "seasonal_temp": { "winter_avg": 42, "spring_avg": 58, "summer_avg": 78, "fall_avg": 62 },
+  "wind_rose_svg": "string | null",
+  "climate_description": "string",
+
+  "soil_map_units": [
+    {
+      "symbol": "CeB2",
+      "name": "Cecil sandy clay loam, 2 to 8 percent slopes, moderately eroded",
+      "drainage_class": "moderately well drained",
+      "k_factor": 0.32,
+      "pct_of_parcel": 58,
+      "implication": "string"
+    }
+  ],
+  "soil_map_svg": "string | null",
+  "soil_profile_svg": "string | null",
+  "soils_description": "string",
+
+  "heat_accumulation_map_svg": "string | null",
+  "canopy_cover_pct": "number | null",
+  "building_footprint_sqft": 1200,
+  "micro_description": "string",
+
+  "vulnerabilities": ["string"],
+  "opportunities": ["string"],
+  "synthesis_narrative": "string — practitioner voice, render verbatim",
+
+  "data_sources": [
+    { "name": "string", "url": "string", "accessed": "YYYY-MM-DD" }
+  ]
+}
+```
+
+**Not every field will be present.** Sources fail gracefully. If a field is null or missing, omit that element entirely. Never fabricate data to fill a gap. Note the absence honestly if the section would otherwise be empty.
+
+---
+
+## Output: a single HTML file
+
+Generate `output/{address_slug}_assessment.html` — a self-contained HTML document. The CSS should be inlined in a `<style>` block (no external stylesheet dependency for the delivered file). Copy the full token set and component classes from the design system CSS into the document.
+
+### Document skeleton
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Site Assessment — {client_name} — {address}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cabin:wght@400;500;600;700&family=Poppins:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* Inline the full design system CSS here */
+  </style>
+</head>
+<body>
+  <!-- sticky header -->
+  <!-- cover section -->
+  <div class="wrap">
+    <!-- sections 01–08 -->
+  </div>
+  <!-- footer -->
+  <script>
+    // IntersectionObserver for scroll-reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('is-visible'); observer.unobserve(e.target); }
+      });
+    }, { threshold: 0.15 });
+    document.querySelectorAll('.scroll-reveal').forEach(el => observer.observe(el));
+
+    // Dark mode: OS preference unless manually toggled
+    if (!document.documentElement.dataset.theme &&
+        matchMedia('(prefers-color-scheme:dark)').matches) {
+      document.documentElement.dataset.theme = 'dark';
+    }
+
+    // Theme toggle handler (wire to the hamburger menu's dark mode option)
+    function toggleTheme() {
+      const html = document.documentElement;
+      html.dataset.theme = html.dataset.theme === 'dark' ? 'light' : 'dark';
+    }
+  </script>
+</body>
+</html>
+```
+
+---
+
+## Design system — token reference
+
+These are the values. Inline them in the `<style>` block. The full CSS is in `docs/DESIGN_SYSTEM.md` and the design-system project; what follows is the working summary.
+
+### Ground and chrome
+
+| Token | Light | Dark |
+|-------|-------|------|
+| `--bg` | `#f0ece3` | `#1e1b16` |
+| `--surface` | `#f7f4ed` | `#282420` |
+| `--surface-elevated` | `#fbf9f5` | `#322e28` |
+| `--ink` | `#2c2620` | `#e8e2d6` |
+| `--heading` | `#3a3228` | `#d8d0c2` |
+| `--muted` | `#887d6c` | `#9a9488` |
+| `--caption` | `#9e9484` | `#7a7468` |
+| `--line` | `#d4cab4` | `#3a3733` |
+| `--accent` | `#9a6a2f` | `#c99a5c` |
+
+No hue in chrome beyond the ochre accent. No gradients. No tinted section backgrounds.
+
+### Typography
+
+| Role | Face | Weight | Size |
+|------|------|--------|------|
+| Headings | Cabin | 700 | h1: clamp(1.85rem, 4.5vw, 2.75rem), h2: clamp(1.5rem, 3.5vw, 2rem), h3: clamp(1.2rem, 2.5vw, 1.5rem) |
+| Body | Poppins | 300 | 1.0625rem, line-height 1.6 |
+| Eyebrow | Poppins | 500 | 0.7rem, uppercase, letter-spacing 0.12em, accent color |
+| Caption | Poppins | 300 | 0.85rem, caption color |
+| Stat values | Cabin | 700 | h2 size |
+
+### Data visualization palette
+
+Ten hue families from the KED paper tier. Each has eight steps (01 lightest → 08 darkest).
+
+**Domain → family mapping:**
+
+| Domain | Family | Fill range | Text on fill |
+|--------|--------|-----------|--------------|
+| Soil / earth / topography | ochre | 03–05 | 07 |
+| Erosion / thermal stress | ember | 03–05 | 07 |
+| Water / drainage / precipitation | water | 03–05 | 07 |
+| Sunlight / solar exposure | gold | 03–05 | 07 |
+| Vegetation / tree cover | canopy | 03–05 | 07 |
+| Shade / ground cover | understory | 03–05 | 07 |
+| Species diversity | coneflower | 03–05 | 07 |
+| Structures / hardscape | material-warm | 03–05 | 07 |
+| Highlights only (markers) | bloom | any | — |
+
+**Rules:**
+1. One dominant family per visualization. Max three families per graphic.
+2. Steps 01–02 for background tints, 03–05 for fills, 06–08 for text on fills.
+3. Labels on fills use the fill's own family -07 step, not `--ink`.
+4. Bloom is highlights only — a "you are here" dot, never a fill or chart series.
+5. Pair every color-encoded value with a text label. Never color alone.
+
+**Seasonal rotation** (climate section):
+- Winter: water family
+- Spring: canopy family
+- Summer: gold family
+- Fall: ember family
+
+**Drainage class gradient** (soils section):
+- Well drained: understory-03
+- Moderately well: canopy-02
+- Somewhat poor: gold-03
+- Poorly drained: ember-03
+
+### Shape
+
+- Radii: 12px cards/buttons, 8px media/inputs, 999px pill tags
+- Shadows: `0 12px 28px -18px rgba(44, 38, 32, 0.18)` on viz cards; `0 16px 48px rgba(44, 38, 32, 0.22)` on dialogs
+- Motion: scroll-reveal only — fade + translateY(14px), 0.6s ease. Respect `prefers-reduced-motion`.
+
+### Layout
+
+- Single centered column, 760px max-width (`max-width: 760px; margin: 0 auto; padding: 0 1.5rem`)
+- Each section: full-viewport fold (`min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding: 3rem 0`)
+- Section dividers: `border-top: 1px solid var(--line-light)`
+- Viz cards: elevated surface with shadow, 12px radius, 1.5rem padding
+
+---
+
+## Section-by-section build instructions
+
+### Header (sticky)
+
+```html
+<header style="position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1.5rem;background:var(--bg);border-bottom:1px solid var(--line-light)">
+  <button onclick="/* menu toggle */" style="background:none;border:none;cursor:pointer;padding:0.5rem;color:var(--ink);font-size:20px;line-height:1" aria-label="Menu">&#9776;</button>
+  <a href="https://kaleiope.design" style="text-decoration:none">
+    <!-- KED wordmark SVG or text fallback -->
+    <span style="font-family:Cabin,sans-serif;font-weight:700;font-size:14px;letter-spacing:0.06em;color:var(--muted)">KALEIOPE</span>
+  </a>
+</header>
+```
+
+### Cover
+
+Full viewport, centered. Eyebrow "Site Assessment" in accent. `client_name` as h1. `address` as muted body. `assessment_date` as caption.
+
+### 01 — Regional context
+
+- Eyebrow: `01 — Regional context`
+- Title: derive from ecoregion, e.g. "Your place in the {ecoregion_l3}" — adapt to actual data
+- Body: `ecoregion_description`
+- Viz card: embed `regional_map_svg` inline. If null, show placeholder with canopy-01 background.
+- If `neighborhood_map_svg` present: second viz card
+- Caption: "Source: EPA Level III/IV Ecoregions, NHD Flowlines. Parcel boundary from {county} GIS."
+
+### 02 — Topography and landform
+
+- Eyebrow: `02 — Topography and landform`
+- Stat row: elevation change, max slope, parcel area — use `.stat-row` layout
+- Body: `topo_description`
+- Viz card: `contour_map_svg`
+- If `slope_drainage_map_svg` present: second viz card
+- If `slope_distribution` present: build horizontal bar chart with ochre family — ochre-02 (flat) through ochre-05 (steep). Add ember-04 legend item for erosion risk zone if `erosion_risk_pct > 0`.
+- Caption: "Source: NCOneMap 1m DEM. Building footprint masked before terrain computation."
+
+### 03 — Hydrology and drainage
+
+- Body: `hydro_description`. Include watershed name and flood zone status.
+- Viz card: `hydro_map_svg`
+- If flood zone is *not* "Zone X" or "Zone X (unshaded)": render a callout with ember-03 tint noting the flood designation
+- Caption: cite USGS WBD, local hydrology source, FEMA NFHL
+
+### 04 — Climate and wind
+
+- Body: `climate_description`
+- Four seasonal cards in a grid:
+  ```
+  Winter (Nov–Jan): water-02 bg, water-06 label, water-07 value
+  Spring (Feb–Apr): canopy-02 bg, canopy-06 label, canopy-07 value
+  Summer (May–Jul): gold-02 bg, gold-06 label, gold-07 value
+  Fall (Aug–Oct): ember-02 bg, ember-06 label, ember-07 value
+  ```
+  Show `seasonal_precip` values. If `seasonal_temp` available, show temperature below precipitation.
+- If `wind_rose_svg` present: additional viz card
+- Caption: "Source: PRISM 30-year normals (1991–2020), Oregon State University."
+
+### 05 — Soils and infiltration
+
+- Body: `soils_description`
+- Viz card: `soil_map_svg`
+- If `soil_profile_svg` present: second viz card
+- Table from `soil_map_units`:
+
+  | Map unit | Drainage class | K-factor | % of parcel | Implication |
+  
+  Use the `.table` class. Plain-language implications, not raw indices.
+- Drainage legend: understory-03 → canopy-02 → gold-03 → ember-03
+- Caption: "Source: NRCS SSURGO via Soil Data Access."
+
+### 06 — Microclimate
+
+- Body: `micro_description`
+- Viz card: `heat_accumulation_map_svg` if available
+- Note `building_footprint_sqft` in body text
+- If `canopy_cover_pct` is null: note "Canopy cover data is not available at sufficient resolution for this parcel."
+- Caption: "Source: Derived from DEM aspect, NLCD canopy cover, and building footprint geometry."
+
+### 07 — Vulnerabilities and opportunities
+
+- Eyebrow: `07 — Vulnerabilities and opportunities`
+- Body: `synthesis_narrative` — render **verbatim**. This is the practitioner's voice.
+- If `vulnerabilities` array: render as a styled list under an h3
+- If `opportunities` array: render as a styled list under an h3
+- **No source citation.** This section is professional judgment, not data.
+
+### 08 — Supporting data
+
+- Title: "Sources and methods"
+- Intro: "All data in this assessment is derived from publicly available sources. Visualizations are generated from these sources; practitioner observations are noted separately in the synthesis section above."
+- Render `data_sources` as a list or table: name as linked text (`<a href="{url}">`), access date in caption color
+- Include the epistemic disclosure: "This assessment infers site-specific conditions from the most granular regional data available. It does not constitute a site-specific survey."
+
+### Footer
+
+```html
+<footer style="border-top:1px solid var(--line);padding:2rem 1.5rem;text-align:center">
+  <div style="font-size:0.85rem;color:var(--caption)">
+    <a href="https://kaleiope.design" style="color:var(--caption);text-decoration:none">KALEIOPE Environmental Design</a>
+  </div>
+  <div style="font-size:0.8rem;margin-top:0.25rem">
+    <a href="mailto:info@kaleiope.design" style="color:var(--accent)">info@kaleiope.design</a>
+  </div>
+</footer>
+```
+
+---
+
+## SVG / image embedding
+
+Visualizations from the R pipeline arrive as inline SVG strings or base64-encoded PNGs.
+
+- **Inline SVG**: Place directly inside the `.viz-card` div. Ensure `width="100%"` and wrap in a div with `border-radius: 8px; overflow: hidden`.
+- **Base64 PNG**: `<img src="data:image/png;base64,..." style="width:100%;border-radius:8px">`
+- **Null/missing**: Placeholder div:
+  ```html
+  <div style="background:var(--{family}-01);aspect-ratio:5/3;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--{family}-05);font-size:0.85rem">
+    Data not available for this parcel
+  </div>
+  ```
+  Use the section's dominant color family for the placeholder tint.
+
+---
+
+## Content rules
+
+1. **Do not invent data.** Every number, map, and claim comes from the payload.
+2. **Do not rewrite practitioner text.** `synthesis_narrative`, `vulnerabilities`, `opportunities` are the practitioner's voice. Format (paragraphs, lists) but do not edit the words.
+3. **Pre-translated descriptions** (`*_description` fields) are already in plain language. Use directly.
+4. **Source transparency.** Every data section links to its source.
+5. **Honest about absence.** Note missing data explicitly. Don't hide gaps.
+6. **No marketing language.** Avoid: "sustainable," "eco-friendly," "lush," "transform," "curated," "bespoke," "elevate." Direct, specific, ecologically literate.
+7. **No emoji.** Not in text, not as bullets, not as decoration.
+
+## Print
+
+Include print styles:
+
+```css
+@media print {
+  body { background: white; color: #2c2620; }
+  .scroll-reveal { opacity: 1 !important; transform: none !important; }
+  header { position: static; }
+  .viz-card { break-inside: avoid; box-shadow: none; border: 1px solid #d4cab4; }
+  section { min-height: auto; page-break-before: always; }
+  section:first-of-type { page-break-before: auto; }
+}
+```
+
+## Responsive
+
+- Seasonal grid: `grid-template-columns: repeat(4, 1fr)` → `repeat(2, 1fr)` below 500px
+- Stat row: flex-wrap handles naturally
+- Tables: wrap in `<div style="overflow-x:auto">` below 600px
+- Viz cards: full width, padding from the `.wrap` container

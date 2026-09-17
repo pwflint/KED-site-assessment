@@ -1,0 +1,338 @@
+/* KED Site Assessment — product design system
+   Vendored verbatim from the "KED Site Assessment" design-system project
+   (claude.ai/design project f39478f9-4ce0-47b0-bacb-ffd973327665, styles.css, synced 2026-09-17).
+   Do not hand-edit token values here — change them in the design project and re-sync.
+
+   Merges KED's paper-tier palette + Amatic SC/Poppins typography
+   with Organic's warm ground and engagement-first posture.
+   Design principle (from docs/DESIGN_SYSTEM.md): accent color comes
+   from the data, not a separate brand decision. */
+
+/* ── Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=Cabin:wght@400;500;600;700&display=swap');
+@font-face{font-family:"Poppins";src:url("assets/fonts/Poppins-ExtraLight.ttf") format("truetype");font-weight:200;font-style:normal;font-display:swap}
+@font-face{font-family:"Poppins";src:url("assets/fonts/Poppins-Light.ttf") format("truetype");font-weight:300;font-style:normal;font-display:swap}
+@font-face{font-family:"Poppins";src:url("assets/fonts/Poppins-Regular.ttf") format("truetype");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Poppins";src:url("assets/fonts/Poppins-Italic.ttf") format("truetype");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Poppins";src:url("assets/fonts/Poppins-Medium.ttf") format("truetype");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"Poppins";src:url("assets/fonts/Poppins-SemiBold.ttf") format("truetype");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Poppins";src:url("assets/fonts/Poppins-Bold.ttf") format("truetype");font-weight:700;font-style:normal;font-display:swap}
+
+/* ── Light theme (default) ── */
+:root {
+  /* Ground — warm cream, warmer than KED chrome, cooler than raw Organic */
+  --bg: #f0ece3;
+  --surface: #f7f4ed;
+  --surface-elevated: #fbf9f5;
+
+  /* Ink — warm near-blacks, never pure black or cold gray */
+  --ink: #2c2620;
+  --heading: #3a3228;
+  --muted: #887d6c;
+  --caption: #9e9484;
+
+  /* Structure */
+  --line: #d4cab4;
+  --line-light: #e2dacb;
+  --border: #d4cab4;
+
+  /* Accent — ochre, the watershed/earth color (accent-from-data principle).
+     This is the UI accent for interactive chrome: buttons, links, focus rings.
+     Data visualizations pull from the full paper-tier palette below instead. */
+  --accent: #9a6a2f;
+  --accent-hover: #7d5625;
+  --accent-light: #c99a5c;
+  --accent-tint: rgba(154, 106, 47, 0.12);
+
+  /* ── Paper-tier data palette (from KED color system) ──
+     Ten hue families × eight steps. Steps 03-05 are the primary data-fill range
+     on the warm ground; 01-02 for subtle tints; 06-08 for text on fills. */
+
+  /* Ember — soil heat, erosion risk, thermal stress */
+  --ember-01:#e9e3e2; --ember-02:#d3bebb; --ember-03:#c1928b; --ember-04:#ae665b;
+  --ember-05:#855047; --ember-06:#5f3f3a; --ember-07:#42312e; --ember-08:#2c2221;
+  /* Ochre — earth, grade, topography, terracotta */
+  --ochre-01:#e9e6e2; --ochre-02:#d3c7bb; --ochre-03:#c1a68b; --ochre-04:#ae855b;
+  --ochre-05:#856647; --ochre-06:#5f4c3a; --ochre-07:#42382e; --ochre-08:#2c2621;
+  /* Gold — sunlight, solar exposure, warmth */
+  --gold-01:#e9e7e2; --gold-02:#d3ccbb; --gold-03:#c1b18b; --gold-04:#ae975b;
+  --gold-05:#857347; --gold-06:#5f543a; --gold-07:#423c2e; --gold-08:#2c2921;
+  /* Canopy — vegetation, tree cover, spring/summer */
+  --canopy-01:#e6e9e2; --canopy-02:#c7d3bb; --canopy-03:#a6c18b; --canopy-04:#85ae5b;
+  --canopy-05:#668547; --canopy-06:#4d5f3a; --canopy-07:#38422e; --canopy-08:#262c21;
+  /* Groundcover — turf, sedum, lowest planting layer */
+  --groundcover-01:#e3e9e2; --groundcover-02:#bdd3bb; --groundcover-03:#8fc18b; --groundcover-04:#62ae5b;
+  --groundcover-05:#4d8547; --groundcover-06:#3d5f3a; --groundcover-07:#30422e; --groundcover-08:#222c21;
+  /* Understory — shade greens, fern, pine, deep cover */
+  --understory-01:#e2e9e4; --understory-02:#bbd3c3; --understory-03:#8bc19d; --understory-04:#5bae77;
+  --understory-05:#47855c; --understory-06:#3a5f46; --understory-07:#2e4235; --understory-08:#212c24;
+  /* Chicory — amsonia, blazing star, beardtongue */
+  --chicory-01:#e3e2e9; --chicory-02:#bebbd3; --chicory-03:#928bc1; --chicory-04:#665bae;
+  --chicory-05:#504785; --chicory-06:#3f3a5f; --chicory-07:#312e42; --chicory-08:#22212c;
+  /* Coneflower — diversity, bloom, seasonal color */
+  --coneflower-01:#e9e2e7; --coneflower-02:#d3bbcc; --coneflower-03:#c18bb0; --coneflower-04:#ae5b95;
+  --coneflower-05:#854772; --coneflower-06:#5f3a54; --coneflower-07:#422e3c; --coneflower-08:#2c2128;
+  /* Water — hydrology, drainage, precipitation, ponds */
+  --water-01:#e2e6e9; --water-02:#bbc8d3; --water-03:#8ba8c1; --water-04:#5b87ae;
+  --water-05:#476885; --water-06:#3a4e5f; --water-07:#2e3942; --water-08:#21272c;
+  /* Bloom — full-strength logo swatches, small bright highlights only, never fills */
+  --bloom-01:#a8332a; --bloom-02:#d1481f; --bloom-03:#d9744e; --bloom-04:#c9761f;
+  --bloom-05:#e0913a; --bloom-06:#c19a45; --bloom-07:#e8b93a; --bloom-08:#e8c04a;
+
+  /* Screen-tier accents — full-strength emphasis inside data content */
+  --screen-ember: #d1481f;
+  --screen-ochre: #c9761f;
+  --screen-gold: #e8b93a;
+  --screen-canopy: #8fc266;
+  --screen-water: #358ad4;
+  --screen-coneflower: #d0709c;
+
+  /* Semantic data-viz aliases — map data domains to color families */
+  --viz-soil: var(--ochre-04);
+  --viz-soil-fill: var(--ochre-02);
+  --viz-soil-text: var(--ochre-07);
+  --viz-erosion: var(--ember-04);
+  --viz-erosion-fill: var(--ember-02);
+  --viz-erosion-text: var(--ember-07);
+  --viz-water: var(--water-04);
+  --viz-water-fill: var(--water-02);
+  --viz-water-text: var(--water-07);
+  --viz-sun: var(--gold-04);
+  --viz-sun-fill: var(--gold-02);
+  --viz-sun-text: var(--gold-07);
+  --viz-vegetation: var(--canopy-04);
+  --viz-vegetation-fill: var(--canopy-02);
+  --viz-vegetation-text: var(--canopy-07);
+  --viz-shade: var(--understory-04);
+  --viz-shade-fill: var(--understory-02);
+  --viz-shade-text: var(--understory-07);
+  --viz-diversity: var(--coneflower-04);
+  --viz-diversity-fill: var(--coneflower-02);
+  --viz-diversity-text: var(--coneflower-07);
+  --viz-cost: var(--ochre-05);
+  --viz-cost-fill: var(--ochre-01);
+  --viz-cost-text: var(--ochre-08);
+
+  /* Material grays — hardscape, structures, neutral fills */
+  --material-warm-01:#ecebe9; --material-warm-02:#d0ccc8; --material-warm-03:#b4ada7;
+  --material-warm-04:#988f86; --material-warm-05:#797067; --material-warm-06:#5e5750;
+  --material-warm-07:#423d38; --material-warm-08:#2c2926;
+
+  /* Typography */
+  --font-display: "Cabin", sans-serif;
+  --font-body: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --weight-display: 700;
+  --weight-body: 300;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --size-h1: clamp(1.85rem, 4.5vw, 2.75rem);
+  --size-h2: clamp(1.5rem, 3.5vw, 2rem);
+  --size-h3: clamp(1.2rem, 2.5vw, 1.5rem);
+  --size-body: 1.0625rem;
+  --size-caption: 0.85rem;
+  --size-eyebrow: 0.7rem;
+  --size-small: 0.8rem;
+  --leading-heading: 1.15;
+  --leading-body: 1.6;
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 5.5rem;
+
+  /* Shape — KED soft, not Organic pill */
+  --radius-card: 12px;
+  --radius-media: 8px;
+  --radius-pill: 999px;
+  --radius-input: 8px;
+  --radius-button: 8px;
+
+  /* Elevation */
+  --shadow-card: 0 1px 3px rgba(44, 38, 32, 0.06);
+  --shadow-card-hover: 0 4px 16px rgba(44, 38, 32, 0.10);
+  --shadow-viz: 0 12px 28px -18px rgba(44, 38, 32, 0.18);
+  --shadow-dialog: 0 16px 48px rgba(44, 38, 32, 0.22);
+
+  /* Motion — restrained, per KED dials (motion intensity 2) */
+  --duration: 0.2s; /* @kind other */
+  --duration-scroll: 0.6s; /* @kind other */
+  --ease: ease; /* @kind other */
+  --ease-scroll: cubic-bezier(0.22, 1, 0.36, 1); /* @kind other */
+
+  /* Layout */
+  --measure: 760px;
+  --measure-wide: 960px;
+  --wrap-padding: 1.5rem;
+  --section-gap: var(--space-8);
+}
+
+/* ── Dark theme ──
+   Applied via data-theme="dark" on :root. For automatic OS-preference detection,
+   include this script: if (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme:dark)').matches) document.documentElement.dataset.theme = 'dark';
+   The explicit toggle always wins. */
+:root[data-theme="dark"] {
+  --bg: #1e1b16; --surface: #282420; --surface-elevated: #322e28;
+  --ink: #e8e2d6; --heading: #d8d0c2; --muted: #9a9488; --caption: #7a7468;
+  --line: #3a3733; --line-light: #33302b; --border: #3a3733;
+  --accent: #c99a5c; --accent-hover: #ddb47a; --accent-light: #9a6a2f;
+  --accent-tint: rgba(201, 154, 92, 0.12);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-card-hover: 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-viz: 0 12px 28px -18px rgba(0,0,0,0.4);
+  --shadow-dialog: 0 16px 48px rgba(0,0,0,0.5);
+}
+
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: var(--size-body); font-weight: var(--weight-body); line-height: var(--leading-body); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: var(--weight-display); line-height: var(--leading-heading); color: var(--heading); margin: 0 0 var(--space-3); }
+h1 { font-size: var(--size-h1); }
+h2 { font-size: var(--size-h2); }
+h3 { font-size: var(--size-h3); }
+p { margin: 0 0 var(--space-4); }
+a { color: var(--accent); text-decoration: underline; text-underline-offset: 0.2em; }
+a:hover { color: var(--accent-hover); }
+img { display: block; max-width: 100%; }
+::selection { background: var(--accent-tint); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Layout ── */
+.wrap { max-width: var(--measure); margin: 0 auto; padding: 0 var(--wrap-padding); }
+.wrap-wide { max-width: var(--measure-wide); margin: 0 auto; padding: 0 var(--wrap-padding); }
+
+/* ── Eyebrow / section label ── */
+.eyebrow {
+  font-family: var(--font-body); font-size: var(--size-eyebrow); font-weight: var(--weight-medium);
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent);
+  margin: 0 0 var(--space-3);
+}
+
+/* ── Scroll section ── */
+.scroll-section { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding: var(--space-7) 0; }
+.scroll-section + .scroll-section { border-top: 1px solid var(--line-light); }
+
+/* ── Visualization card ── */
+.viz-card {
+  background: var(--surface-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-card); padding: var(--space-5);
+  box-shadow: var(--shadow-viz); overflow: hidden;
+}
+.viz-card img, .viz-card svg, .viz-card canvas, .viz-card .viz-frame {
+  border-radius: var(--radius-media); width: 100%;
+}
+.viz-caption {
+  font-size: var(--size-caption); color: var(--caption); margin-top: var(--space-3);
+  line-height: 1.5;
+}
+.viz-caption a { color: var(--muted); }
+
+/* ── Stat callout ── */
+.stat { display: flex; flex-direction: column; gap: var(--space-1); }
+.stat-value { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--size-h2); line-height: 1; color: var(--heading); }
+.stat-label { font-size: var(--size-caption); color: var(--muted); }
+.stat-row { display: flex; gap: var(--space-6); flex-wrap: wrap; }
+
+/* ── Legend ── */
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); font-size: var(--size-small); }
+.legend-item { display: flex; align-items: center; gap: var(--space-2); }
+.legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer; text-decoration: none; font-family: var(--font-body);
+  font-weight: var(--weight-medium); font-size: var(--size-caption); line-height: 1.2;
+  color: var(--ink); background: transparent; border: 1px solid transparent;
+  padding: var(--space-2) var(--space-4); border-radius: var(--radius-button);
+  transition: background var(--duration), color var(--duration), border-color var(--duration);
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: var(--surface-elevated); border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.btn-secondary { border-color: var(--line); }
+.btn-secondary:hover { background: var(--accent-tint); }
+.btn-ghost { color: var(--accent); }
+.btn-ghost:hover { background: var(--accent-tint); }
+
+/* ── Forms ── */
+.field > label { display: block; font-size: var(--size-small); font-weight: var(--weight-medium); margin-bottom: var(--space-1); color: var(--muted); }
+.input {
+  width: 100%; min-height: 36px; padding: 6px 12px; font: inherit; font-size: var(--size-caption);
+  color: var(--ink); background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius-input); caret-color: var(--accent);
+  transition: border-color var(--duration);
+}
+.input:hover { border-color: var(--muted); }
+.input:focus-visible { border-color: var(--accent); outline-offset: 0; }
+textarea.input { min-height: 90px; resize: vertical; }
+
+/* ── Cards (content) ── */
+.card {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-5); border-radius: var(--radius-card);
+  background: var(--surface); border: 1px solid var(--border);
+  transition: box-shadow var(--duration), border-color var(--duration);
+}
+.card:hover { box-shadow: var(--shadow-card-hover); border-color: var(--muted); }
+
+/* ── Tables ── */
+.table { width: 100%; border-collapse: collapse; font-size: var(--size-caption); }
+.table th {
+  text-align: left; font-size: var(--size-eyebrow); font-weight: var(--weight-medium);
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+  padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line);
+}
+.table td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line-light); }
+.table tbody tr:hover { background: var(--accent-tint); }
+
+/* ── Dialog / modal ── */
+.dialog-backdrop {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  padding: var(--space-5); background: rgba(30, 27, 22, 0.55);
+  backdrop-filter: blur(4px); z-index: 100;
+}
+.dialog {
+  width: min(520px, 100%); display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-6); border-radius: var(--radius-card);
+  background: var(--surface-elevated); box-shadow: var(--shadow-dialog);
+}
+.dialog-title { font-family: var(--font-display); font-size: var(--size-h3); margin: 0; }
+.dialog-body { font-size: var(--size-caption); color: var(--muted); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-2); }
+
+/* ── Tags ── */
+.tag {
+  display: inline-flex; align-items: center; font-size: 11px;
+  letter-spacing: 0.02em; padding: 3px 10px; border-radius: var(--radius-pill);
+}
+.tag-soil { background: var(--ochre-01); color: var(--ochre-07); }
+.tag-water { background: var(--water-01); color: var(--water-07); }
+.tag-vegetation { background: var(--canopy-01); color: var(--canopy-07); }
+.tag-sun { background: var(--gold-01); color: var(--gold-07); }
+.tag-erosion { background: var(--ember-01); color: var(--ember-07); }
+.tag-diversity { background: var(--coneflower-01); color: var(--coneflower-07); }
+
+/* ── Scroll animation (respects reduced motion) ── */
+.scroll-reveal { opacity: 0; transform: translateY(14px); transition: opacity var(--duration-scroll) var(--ease-scroll), transform var(--duration-scroll) var(--ease-scroll); }
+.scroll-reveal.is-visible { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { .scroll-reveal { opacity: 1; transform: none; transition: none; } }
+
+/* ── Vertical timeline rule (the continuous scroll line) ── */
+.timeline-rule { position: relative; }
+.timeline-rule::before {
+  content: ""; position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 1px; background: var(--line-light); transform: translateX(-50%); z-index: -1;
+}
+
+/* ── Print ── */
+@media print {
+  body { background: white; color: #2c2620; }
+  .scroll-reveal { opacity: 1 !important; transform: none !important; }
+  .dialog-backdrop { display: none !important; }
+  .viz-card { break-inside: avoid; box-shadow: none; border: 1px solid #d4cab4; }
+}
