@@ -91,15 +91,16 @@ placeholder <- function(family) {
 
 # A .viz-card. When media is missing: the section's primary graphic gets the
 # design system's tinted placeholder; a secondary graphic is omitted entirely.
-viz_card <- function(media, family, caption = NULL, required = TRUE) {
+viz_card <- function(media, family, caption = NULL, required = TRUE, extra = "", title = NULL) {
   if (!has(media)) {
     if (!required) return("")
     body <- placeholder(family)
   } else {
     body <- viz_media(media)
   }
+  head <- if (has(title)) sprintf("<h3>%s</h3>", esc(title)) else ""
   cap <- if (has(caption)) sprintf('<div class="viz-caption">%s</div>', caption) else ""
-  sprintf('<div class="viz-card scroll-reveal">%s%s</div>', body, cap)
+  sprintf('<div class="viz-card scroll-reveal">%s%s%s%s</div>', head, body, extra, cap)
 }
 
 stat <- function(value, label) {
@@ -235,17 +236,41 @@ sec_regional <- function(p) {
              required = FALSE))
 }
 
+slope_legend <- function(erosion_pct) {
+  items <- c(
+    '<div class="legend-item"><div class="legend-swatch" style="background:var(--ochre-01);border:1px solid var(--line)"></div>Flat, under 2%</div>',
+    '<div class="legend-item"><div class="legend-swatch" style="background:var(--ochre-02)"></div>Gentle, 2 to 8%</div>',
+    '<div class="legend-item"><div class="legend-swatch" style="background:var(--ochre-03)"></div>Moderate, 8 to 15%</div>',
+    '<div class="legend-item"><div class="legend-swatch" style="background:var(--ochre-04)"></div>Steep, over 15%</div>',
+    if (has(erosion_pct) && as.numeric(erosion_pct) > 0)
+      '<div class="legend-item"><div class="legend-swatch" style="background:var(--ember-03);border:1px solid var(--ember-05)"></div>Erosion risk, over 20%</div>',
+    '<div class="legend-item"><span class="legend-arrow" aria-hidden="true"></span>Arrows point downhill; longer means steeper</div>')
+  sprintf('<div class="legend viz-legend">%s</div>', paste(items, collapse = "\n"))
+}
+
 sec_topography <- function(p) {
+  county <- if (has(p$county)) sprintf("%s County GIS", esc(p$county)) else "county GIS"
+  pair <- if (has(p$elevation_profile_svg) || has(p$aspect_rose_svg)) {
+    sprintf('<div class="viz-pair">%s%s</div>',
+      viz_card(p$elevation_profile_svg, "ochre", title = "Ground profile, street to back of lot",
+               caption = "Ground elevation along the A to A\u2032 line on the map above, relative to its lowest point. The dashed segment under the house is interpolated between the ground at its walls.",
+               required = FALSE),
+      viz_card(p$aspect_rose_svg, "gold", title = "Which way the ground faces",
+               caption = "Share of the sloping ground (over 1.5% grade) by the compass direction it faces. South-facing directions get the most sun.",
+               required = FALSE))
+  } else ""
   section("topography", "02 — Topography and landform", "Reading the ground",
-    stat_row(stat(fmt(p$elevation_change_ft, 0, " ft"), "Elevation change"),
-             stat(fmt(p$max_slope_pct, 0, "%"), "Max slope"),
+    stat_row(stat(fmt(p$elevation_change_ft, 1, " ft"), "Elevation change"),
+             stat(fmt(p$max_slope_pct, 0, "%"), "Steepest grade"),
+             stat(fmt(p$mean_slope_pct, 1, "%"), "Average grade"),
              stat(fmt(p$parcel_area_acres, 2, " ac"), "Parcel area")),
     paras(p$topo_description, "lede"),
     viz_card(p$contour_map_svg, "ochre",
-             "Source: NCOneMap 1m DEM. Building footprint masked before terrain computation."),
+             sprintf("Contours every 0.25 ft, darker lines every 1 ft, smoothed from the NC OneMap 3 ft bare-earth DEM with the building footprint masked before any terrain computation. Buildings from the NC statewide footprint inventory; parcel line from %s.", county)),
     viz_card(p$slope_drainage_map_svg, "ochre",
-             "Slope and drainage direction across open ground, from the same masked DEM. Arrow length scales with grade.",
-             required = FALSE),
+             "Slope classes and downhill direction across open ground, from the same masked DEM. Percentages are the local grade at each arrow.",
+             required = FALSE, extra = slope_legend(p$erosion_risk_pct)),
+    pair,
     slope_chart(p$slope_distribution, p$erosion_risk_pct))
 }
 
@@ -413,6 +438,12 @@ REPORT_CSS <- "/* ── Report layout (on top of the design system) ── */
 .bar-label { width: 120px; text-align: right; color: var(--muted); flex-shrink: 0; }
 .bar { height: 28px; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: var(--weight-medium); min-width: 32px; }
 .chart-legend { margin-top: 12px; }
+.viz-legend { margin-top: var(--space-3); }
+.legend-arrow { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--water-05); position: relative; flex-shrink: 0; }
+.legend-arrow::after { content: ''; position: absolute; right: -1px; top: -4px; border: 3px solid transparent; border-left: 6px solid var(--water-05); }
+.viz-pair { display: grid; grid-template-columns: 3fr 2fr; gap: var(--space-4); margin-top: var(--space-5); }
+.viz-pair .viz-card { margin-top: 0; }
+.viz-card h3 { font-size: 1rem; margin-bottom: var(--space-3); }
 .drainage-legend { margin-top: var(--space-4); }
 .callout { background: var(--ember-02); color: var(--ember-07); border-radius: var(--radius-media); padding: var(--space-4) var(--space-5); margin: 0 0 var(--space-4); max-width: 560px; }
 .callout-eyebrow { color: var(--ember-06); }
@@ -433,6 +464,9 @@ REPORT_CSS <- "/* ── Report layout (on top of the design system) ── */
 .footer-name a { color: var(--caption); text-decoration: none; }
 .footer-mail { font-size: var(--size-small); margin-top: var(--space-1); }
 
+@media (max-width: 600px) {
+  .viz-pair { grid-template-columns: 1fr; }
+}
 @media (max-width: 500px) {
   .season-grid { grid-template-columns: repeat(2, 1fr); }
   .bar-label { width: 96px; }

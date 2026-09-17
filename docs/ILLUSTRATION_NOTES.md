@@ -1,7 +1,7 @@
 ---
 author: peter
 created: '2026-07-28'
-modified: '2026-07-28'
+modified: '2026-09-17'
 status: development
 tags:
   - domain/gis
@@ -27,6 +27,7 @@ This document tracks design decisions, judgment calls, and rejected approaches f
 - [x] Regional-scale inset (state-scale ecoregion + river context) — prototype settled, `R/illustrate/regional_inset.R`
 - [x] Neighborhood-scale main image (contours + local hydrology + watershed boundary) — prototype settled, `R/illustrate/neighborhood_context.R`
 - [x] Parcel-scale illustration, two graphics — prototypes settled, `R/illustrate/parcel_base_map.R`, `parcel_slope_drainage.R`, `parcel_building_mask.R`
+- [x] Section 02 client-facing set (base map, slope/drainage, ground profile, aspect rose) styled to the design system — first pass 2026-09-17, `R/illustrate/parcel_topography.R`; see the section at the end of this document
 - [ ] Prose for any of the above — explicitly deferred by Peter until the writing approach itself is validated; do not draft unprompted
 
 ---
@@ -124,3 +125,34 @@ Peter's original concern going in was resolution (a 15ft buffer gives only ~26×
 ### Explicitly deferred / not validated generally
 - All grid/threshold parameters (`grid_spacing_ft`, `bldg_clearance_ft`, the focal smoothing window, the 0.25ft contour interval) were tuned against one small (0.14 acre), rectangular, one-building parcel. Untested on a larger or irregularly-shaped lot, or one with multiple structures.
 - The canopy-at-parcel-scale question isn't solved for cases where it matters more (e.g., a heavily wooded lot) — it's just correctly absent here, not designed around yet.
+
+---
+
+## Section 02, client-facing set (`R/illustrate/parcel_topography.R`, `R/report/build_site_report.R`)
+
+**Job:** turn the two settled parcel-scale prototypes into report graphics that follow `docs/DESIGN_SYSTEM.md`, and add the two topography graphics the PRD names that had no prototype yet (elevation profile, aspect rose). Built 2026-09-17 against the test parcel, first pass, not validated on a second site. The prototype scripts stay untouched as the plain-R record of what was validated; this file is the styled version and reads the same data.
+
+**Output format, now decided for this section:** inline SVG via `svglite`, one string per graphic, embedded by `R/report/render_report.R`. `ggplot_to_svg()` strips the fixed size (so CSS `width:100%` scales it), makes the background transparent (the `.viz-card` surface shows through), removes svglite's `textLength` attributes (otherwise the browser stretches every label to R's font metrics), and swaps the chrome hex values (ink, muted, line, surface, accent) for the design system's CSS variables so the SVG follows light/dark mode. Data-family colors (ochre, ember, water, gold, material) stay literal, per the design system's rule that the paper-tier steps hold in both themes. All SVG text is Poppins; Cabin is reserved for HTML headings so R never needs it installed.
+
+### The four graphics, and what each interpolates
+
+1. **Base map** — contours over a hypsometric tint (ochre-01 to 03), index contours labeled, own building material-warm-04, neighbors material-warm-02, parcel line dashed ink, "STREET" label on the street side, A to A′ transect marker, scale bar and north arrow. The DEM is masked around the building first (unchanged rule), then upsampled 4x bilinear and smoothed with a 5-cell mean before contouring. That is the interpolation: it makes 0.25 ft contours read as ground instead of 3 ft pixel edges. It adds no information and the parcel relief it reports (4.8 ft) matches the raw masked DEM exactly (checked, not assumed).
+2. **Slope and drainage** — slope-class fill (ochre-01 flat to ochre-04 steep, from a 7-cell smoothed slope with polygon corners rounded by an open/close buffer), downhill arrows in water-05 with local grade labels, erosion-risk zone (over 20%, same threshold as `dem.R`) in ember-03/05. Legend lives in the HTML under the card, not in the SVG. The class fill is for reading; the stats use the less-smoothed slope.
+3. **Ground profile** — elevation sampled every 1 ft along a straight transect from the street edge through the parcel centroid to the back edge, relative to its low point. The run under the house is a straight-line interpolation between the ground at the two walls, drawn dashed with a translucent house block over it, and the caption says so. **Real finding on the test parcel:** the low point of this line sits directly behind the house at its back wall, and the back yard rises 2.3 ft from there to the rear line. The back yard drains toward the house. That is the kind of thing this graphic exists to surface; prose about it stays deferred.
+4. **Aspect rose** — share of sloping ground (over 1.5% grade, so flat cells with meaningless aspect are excluded) in each of eight compass octants, gold-04 for the three south-facing octants, gold-02 otherwise. Test parcel: 39% faces SE, 30% E, 18% S.
+
+### Numbers that changed from the earlier notes, and why
+
+- **Parcel relief is 4.8 ft (316.3 to 321.1 ft), not the 2.3 ft recorded in `DATA_SOURCE_RESEARCH.md`.** The earlier figure came from a tighter 20 ft clip in the first DEM session; the parcel's SW corner rises to 321 ft and is inside the parcel line. Confirmed on the raw, unsmoothed, building-masked DEM before trusting the smoothed value.
+- **"Steepest grade" in the stat row is the 99th percentile of on-parcel slope (19%), not the maximum.** A single spiky cell at the curb or a wall base should not headline the section. The erosion-risk share (0.7% of the parcel over 20%) still uses every cell.
+
+### Decisions made here that deserve Peter's eye
+
+- **Street side is an input, not a detection.** `KED_STREET_SIDE` (E/W/N/S) orients the transect and the label. For the test parcel it was read off OpenStreetMap by hand (Hill St runs north-south along the east edge). A road lookup could automate it later; guessing it from terrain would be wrong.
+- **Label text uses `--ink`, not the family's 07 step.** The design system rule is for labels on data fills; these labels sit on a label box that flips with the theme, and the 07 step went invisible in dark mode. Caught in the browser, not in R.
+- **The slope graphic is framed tight (14 ft) and the base map wide (30 ft).** The base map carries neighborhood context; the slope graphic only says something about the parcel.
+- Canopy is still absent at this scale, for the reason recorded above (30 m NLCD pixels).
+
+### Not validated generally
+
+Same caveat as the prototypes: every parameter (buffers, smoothing windows, grid spacing, contour interval, the 1.5% aspect cutoff) was tuned on one small rectangular parcel with one building on a 4.8 ft relief. A larger, wooded, or irregular lot, or one with 20 ft of relief, will need the transect, the contour interval, and the profile's vertical scale revisited.

@@ -64,7 +64,8 @@ Two-mode pipeline per `docs/PRD.md`: a pre-visit brief (internal, data-only) and
 | `docs/ILLUSTRATION_NOTES.md` | Translate/illustrate-step design decisions, judgment calls, rejected approaches — the layer above DATA_SOURCE_RESEARCH.md (sources) |
 | `docs/DESIGN_SYSTEM.md` | Finished-output visual design — color/type/layout tokens for the client-facing page itself, separate from illustration content decisions |
 | `R/acquisition/*.R` | One file per validated data source: parcel, dem, soil, climate, wind, flood, building_footprint, canopy, watershed, ecoregion, basemap |
-| `R/illustrate/*.R` | Prototype illustration functions: `regional_inset.R` (state-scale), `neighborhood_context.R` + `basemap_tiles.R` (neighborhood-scale), `parcel_base_map.R` + `parcel_slope_drainage.R` + `parcel_building_mask.R` (parcel-scale) |
+| `R/illustrate/*.R` | Prototype illustration functions: `regional_inset.R` (state-scale), `neighborhood_context.R` + `basemap_tiles.R` (neighborhood-scale), `parcel_base_map.R` + `parcel_slope_drainage.R` + `parcel_building_mask.R` (parcel-scale); `parcel_topography.R` is the design-system-styled section 02 set (base map, slope/drainage, ground profile, aspect rose) that the report embeds |
+| `R/report/` | Report output layer: `render_report.R` (payload JSON to one self-contained HTML file, design system inlined), `build_site_report.R` (live-data build for one parcel, site passed by env vars, writes to gitignored `output/`), `build_sample.R` + `sample_payload.json` (fictional layout sample), `assets/` (vendored design system CSS and letterhead) |
 | `.cursor/rules/oak-workflow.mdc`, `.cursor/rules/git-workflow.mdc` | Dual-VCS rules |
 
 ---

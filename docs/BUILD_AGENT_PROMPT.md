@@ -52,6 +52,10 @@ The acquisition pipeline produces a JSON object per parcel. Your input looks lik
   "erosion_risk_pct": 4,
   "contour_map_svg": "string | null",
   "slope_drainage_map_svg": "string | null",
+  "elevation_profile_svg": "string | null — ground section along the map's A–A′ transect (added 2026-09-17)",
+  "aspect_rose_svg": "string | null — share of sloping ground by compass direction (added 2026-09-17)",
+  "mean_slope_pct": 5.2,
+  "county": "Wake — used in source captions (added 2026-09-17)",
   "topo_description": "string",
 
   "watershed_name": "string",
@@ -268,6 +272,7 @@ Full viewport, centered. Eyebrow "Site Assessment" in accent. `client_name` as h
 - Viz card: `contour_map_svg`
 - If `slope_drainage_map_svg` present: second viz card
 - If `slope_distribution` present: build horizontal bar chart with ochre family — ochre-02 (flat) through ochre-05 (steep). Add ember-04 legend item for erosion risk zone if `erosion_risk_pct > 0`.
+- If `elevation_profile_svg` or `aspect_rose_svg` present: a two-card row (`.viz-pair`, 3:2, stacking below 600px), each with an h3 title and caption. The slope/drainage card carries an HTML `.legend` (slope classes, erosion zone, arrow key) below the graphic. Added 2026-09-17; implemented in `R/report/render_report.R`, produced by `R/illustrate/parcel_topography.R`.
 - Caption: "Source: NCOneMap 1m DEM. Building footprint masked before terrain computation."
 
 ### 03 — Hydrology and drainage
