@@ -552,6 +552,8 @@ First attempt was deriving real height from raw LiDAR point clouds (Peter provid
 
 `R/acquisition/canopy.R`: given a parcel, retrieves the raw percent-canopy raster (kept, not discarded — same "raw values in retrieval" principle as flood zones), thresholds it to a "has canopy" extent polygon at a configurable `threshold_pct` (default 0 — any measurable canopy, not a density cutoff), and attaches a configurable `assumed_height_ft` (default 55ft, the midpoint of the 50-60ft range Peter specified — adjustable to anything above the 30ft building-height placeholder for test runs).
 
+**2026-09-19, section 06:** the report now uses this layer only as a context figure (mean percent canopy within 300 ft of the parcel, 8×7 pixels, 16% on the test parcel), labeled as coarse and as including the surrounding lots. Parcel-scale canopy is still unsourced; candidates recorded in `docs/ILLUSTRATION_NOTES.md` (section 06): the Meta/WRI 1 m canopy height raster, NAIP NDVI, or field annotation.
+
 ### NC OneMap Landcover — checked, stale, not usable
 
 NC OneMap does have `NC1Map_Landcover` (Feature and MapServer, plus a raster variant) — but it's dated **1996**. Thirty years old, from a one-time EarthSat-contracted statewide mapping project. Not usable for a current assessment. Ruled out, not pursued further.

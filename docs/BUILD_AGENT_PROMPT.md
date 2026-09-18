@@ -125,14 +125,25 @@ The acquisition pipeline produces a JSON object per parcel. Your input looks lik
   "soil_profile_svg": "string | null — the parcel's map unit components as horizon columns to 60 in (2026-09-18)",
   "soils_description": "string",
 
-  "heat_accumulation_map_svg": "string | null",
-  "canopy_cover_pct": "number | null",
-  "building_footprint_sqft": 1200,
+  "building_footprint_sqft": 1238,
+  "open_ground_sqft": 4791,
+  "south_facing_pct": 63,
+  "warm_ground_pct": 0, "cool_ground_pct": 6,
+  "building_height_ft_assumed": 30,
+  "shade_hours_window": [9, 15],
+  "winter_noon_sun_deg": 31, "winter_full_sun_pct": 3, "winter_shade_2h_pct": 58, "winter_shade_4h_pct": 12,
+  "summer_noon_sun_deg": 78, "summer_full_sun_pct": 60, "summer_shade_2h_pct": 18, "summer_shade_4h_pct": 2,
+  "canopy_cover_pct": "number | null — parcel-scale canopy; null until a parcel-scale source exists",
+  "canopy_cover_nearby_pct": "number | null — NLCD 30 m mean within canopy_cover_nearby_radius_ft (added 2026-09-19)",
+  "canopy_cover_nearby_radius_ft": 300,
+  "sun_path_svg": "string | null — the sun's arcs over the lot on the solstices and equinox (2026-09-19; rendered in section 06)",
+  "heat_accumulation_map_svg": "string | null — heat load index with the summer midday building shade over it (2026-09-19)",
+  "shade_map_svg": "string | null — hours of building shade, winter and summer solstice pair (2026-09-19)",
   "micro_description": "string",
 
   "vulnerabilities": ["string"],
   "opportunities": ["string"],
-  "synthesis_narrative": "string — practitioner voice, render verbatim",
+  "synthesis_narrative": "string — practitioner voice, render verbatim; these three come from the gitignored practitioner notes file (2026-09-19)",
 
   "data_sources": [
     { "name": "string", "url": "string", "accessed": "YYYY-MM-DD" }
@@ -357,15 +368,19 @@ Full viewport, centered. Eyebrow "Site Assessment" in accent. `client_name` as h
 ### 06 — Microclimate
 
 - Body: `micro_description`
-- Viz card: `heat_accumulation_map_svg` if available
-- Note `building_footprint_sqft` in body text
-- If `canopy_cover_pct` is null: note "Canopy cover data is not available at sufficient resolution for this parcel."
-- Caption: "Source: Derived from DEM aspect, NLCD canopy cover, and building footprint geometry."
+- Stat row (added 2026-09-19): building footprint, sloping ground facing south, open ground in full midday sun in summer, open ground shaded 2+ hours in winter
+- Viz card "The sun's path over the lot": `sun_path_svg` (optional), first card in the section (moved from 07 at review, 2026-09-19). Produced by `R/illustrate/site_synthesis.R`.
+- Canopy line: if `canopy_cover_nearby_pct` is present, say tree canopy is not mapped at parcel scale and give the NLCD figure within its radius as a coarse one that includes the surrounding lots; else if `canopy_cover_pct` is null, note "Canopy cover data is not available at sufficient resolution for this parcel."
+- Viz card "Summer sun and shade": `heat_accumulation_map_svg` (gold to ember heat load index from the masked DEM, understory overlay where buildings shade the ground 2+ hours at midday in summer), with an HTML legend. Produced by `R/illustrate/parcel_microclimate.R`.
+- Viz card "Hours of building shade, winter and summer": `shade_map_svg`, a solstice pair with a four-class HTML legend.
+- Both captions state the inferences: every building at `building_height_ft_assumed` until measured; tree shade not included; the `shade_hours_window` in solar time.
+- Caption sources: NC OneMap DEM, NC building footprints; NLCD Tree Canopy Cover for the nearby figure.
 
 ### 07 — Vulnerabilities and opportunities
 
 - Eyebrow: `07 — Vulnerabilities and opportunities`
-- Body: `synthesis_narrative` — render **verbatim**. This is the practitioner's voice.
+- Body: `synthesis_narrative` — render **verbatim**. This is the practitioner's voice. The build script reads it, the two lists and the zone parameters from a gitignored notes file (`output/{slug}_notes.json` or `KED_PRACTITIONER_NOTES`), never from the repo (2026-09-19).
+- No graphics (review 2026-09-19): the drafted opportunities plan was rejected (an assessment is not a design) and the sun path moved to section 06.
 - If `vulnerabilities` array: render as a styled list under an h3
 - If `opportunities` array: render as a styled list under an h3
 - **No source citation.** This section is professional judgment, not data.

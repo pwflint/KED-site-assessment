@@ -1,7 +1,7 @@
 ---
 author: peter
 created: '2026-07-28'
-modified: '2026-09-18'
+modified: '2026-09-19'
 status: development
 tags:
   - domain/gis
@@ -31,7 +31,9 @@ This document tracks design decisions, judgment calls, and rejected approaches f
 - [x] Section 03 client-facing set (parcel flow arrows, self-rendered neighborhood subwatershed map) — first pass 2026-09-18, `R/illustrate/parcel_hydrology.R`
 - [x] Section 01 client-facing set (regional inset, neighborhood orientation map) — first pass 2026-09-18, `R/illustrate/regional_orientation.R`
 - [x] Section 04 client-facing set (monthly climate chart, seasonal wind roses) — first pass 2026-09-18, `R/illustrate/climate_wind.R`
-- [x] Section 05 client-facing set (neighborhood soil map, map unit soil profiles) — first pass 2026-09-18, `R/illustrate/parcel_soils.R`; see the last two sections
+- [x] Section 05 client-facing set (neighborhood soil map, map unit soil profiles) — first pass 2026-09-18, `R/illustrate/parcel_soils.R`
+- [x] Section 06 client-facing set (summer sun and shade map, hours of building shade on the solstices) — first pass 2026-09-19, `R/illustrate/parcel_microclimate.R`
+- [x] Section 07 client-facing set (sun path over the lot, the practitioner's zones as an annotated site plan) — first pass 2026-09-19, `R/illustrate/site_synthesis.R`; see the last section
 - [ ] Prose for any of the above — explicitly deferred by Peter until the writing approach itself is validated; do not draft unprompted
 
 ---
@@ -291,6 +293,79 @@ The test parcel sits entirely inside one map unit, **BcC, Beltline-Urban land-Ce
 
 ### Not validated generally
 A parcel that straddles two units gets two headings and a `pct_of_parcel` split; untested. A consociation (one named soil at 85%+) will produce one wide column and the profile will look empty on the right; the width rule may want a floor. Units with `Urban land` at 100% have no horizons at all. The 60 in cut-off truncates the deep Bt horizons (Cecil's go to 79 in); the caption says so.
+
+---
+
+## Section 06, client-facing set (`R/illustrate/parcel_microclimate.R`)
+
+**Job:** heat, shade and air at the lot, from what the validated data can honestly support: the masked DEM (slope, aspect), the building footprints with their placeholder height, and the sun's path at the parcel's latitude. Built 2026-09-19 on the test parcel. First pass, not validated on a second site. No prose.
+
+### The graphics
+1. **Summer sun and shade.** The McCune and Keon (2002) heat load index from slope and aspect, relative to level ground, gold-01 (faces away from the sun) through gold-02 (level) to ember-04 (faces the afternoon sun); over it, the ground the buildings shade for two or more hours between 9 and 3 solar time on the summer solstice, in understory-03. On this gentle lot (mean grade 5%) the index varies by under 5% either way, so the map is almost uniform and the building shade is the picture. That is the truth of the lot, and the stats say it (0% of ground notably warmer than level, 6% cooler).
+2. **Hours of building shade, winter and summer.** For each solstice, every DEM cell counts the half-hour steps between 9 and 3 it sits in a building's shadow; four classes in understory. Shadows come from plain sun geometry (declination by Spencer's series; altitude and azimuth from the hour angle, solar time, no equation-of-time correction) and each footprint swept along the shadow vector, edge by edge, so an L-shaped house does not get a filled-in hull. **The neighbors' buildings cast shade too**, and that is the finding on the test parcel: the house on the lot to the south shades this lot's southern strip for four-plus hours in winter (sun 31° at noon, a 50 ft shadow from a 30 ft wall); in summer (78°, 7 ft) shade is a thin ring around the house's east and west sides and 60% of the open ground is in full midday sun.
+
+### What is inferred, and said in the captions
+- **Building height is the 30 ft placeholder** from the footprint inventory (which carries no height; the July `LIDAR_HAG` finding). Every building gets it. A one-story ranch and a two-story neighbor look the same; a field measurement replaces the number and the graphics regenerate.
+- **Tree shade is not drawn.** NLCD is 30 m (the July finding); the section reports the NLCD mean within 300 ft (16% on the test parcel) as a coarse context figure, labeled as including the surrounding lots. Parcel-scale canopy remains the open question from Peter's section 01 review. Candidates recorded, not built: the Meta/WRI 1 m global canopy height raster (an existing computed product, matches the pipeline's "cite, don't derive" rule; hosted on AWS by quadkey tile, ~100 MB a tile); NAIP 4-band NDVI at 60 cm (a derivation, but a simple one); the practitioner's field annotation (the PRD's own answer). None chosen.
+- The heat load index is a relative ranking of ground by the sun it faces, not a temperature; the legend words say "cooler" and "warmer", not degrees.
+- Solar time, not clock time: the sweep is symmetric about solar noon, which is about 20 minutes off clock noon in Raleigh. The caption says "solar time".
+
+### Decisions worth Peter's eye
+- Wind was drafted as arrows on the heat map and dropped: both seasons blow from the southwest on this parcel so the arrows sat on top of each other, and the map is too small for them to say more than the section 04 roses already do. The stat row and section 04 carry wind; the section title still says "air".
+- The shade classes (under 1, 1 to 2, 2 to 4, 4 to 6 hours) and the two-hour threshold for the summer overlay are readable divisions of a six-hour window, not a horticultural standard. "Full sun" for plants is usually six-plus hours a day; the six-hour midday window cannot measure that and the report does not claim it.
+- The frame is 20 ft beyond the parcel (section 02's slope graphic uses 14) so the STREET label fits; the extra empty ground above the lot is the cost.
+
+### Not validated generally
+A north-side neighbor never shades the lot and a west-side one only in the morning, so lots in other orientations will look very different; the geometry handles it but nothing has been checked. A parcel with several buildings or a tall one (three stories) will need the placeholder height per building. Flat lots make the heat index meaningless and the map will be one tint; steep south-facing lots will push it to the ember end. Winter shade from evergreen trees, the other big winter shade source, is absent for the canopy reason above.
+
+---
+
+## Section 07, client-facing set (`R/illustrate/site_synthesis.R`, the practitioner notes file)
+
+**Job:** the one section where interpretation belongs. Peter's call, 2026-09-19, after weighing it against chasing a parcel-scale canopy dataset: build section 07's visuals in the site-analysis idiom of the mood board (`docs/reference/Graphic Mood Board.png`: his own block model with solstice sun arcs and wind arrows, the symbol palettes, the hand-drawn student analysis with sun path and zones), and treat canopy as a field observation for now. First pass, on the test parcel only.
+
+### The words
+Section 07's text is the practitioner's. It comes from a **gitignored notes file** (`output/{slug}_notes.json`, or `KED_PRACTITIONER_NOTES`), never from the repo: narrative, vulnerabilities, opportunities, the zone parameters and zone labels. This is the PRD's field-annotation channel made concrete. For the test parcel Peter dictated the content and asked for it edited into clean prose rather than quoted (speech-to-text); the agent edited for grammar and concision only, and the result is his to change. `BUILD_AGENT_PROMPT.md`'s "render verbatim" rule still holds for the renderer: it prints the file as given.
+
+### The graphics
+1. **Sun path over the lot.** A plan-view polar diagram around the house: direction around the ring, the sun's height by distance (a low sun far out, a high sun close in), three arcs for the summer solstice, the equinox and the winter solstice with sunrise and sunset points and hour ticks, day length and noon altitude labeled. At this latitude sunrise swings from 61° (June) to 119° (December), 14.4 against 9.6 hours of daylight; Peter's point is that most people have never seen the swing drawn. Pure geometry from `sun_position()`; the same for every lot at the latitude. Solar time, said in the caption.
+2. **Annotated site plan.** The section 02 index contours with the practitioner's zones drawn as **schematic** polygons: front and back yards as slabs relative to the house and the street side; a strip along the street for its heat; a strip at the rear for understory; a canopy overhang band by edge and share; a rain garden as a disk off the named corner of the house; swales as dashed lines from the rear line along each side to the rain garden; the prevailing wind as one arrow per direction (summer and winter both blow from the SW here, so one). Each zone gets a boxed label with a leader. Colors follow the families (gold for sun-loving planting, water for the rain garden and swales, understory and canopy for planting and overhang, ember for street heat): six families on one graphic, well past the three-family rule, accepted here because this diagram's job is to name several different things at once and the design system has no synthesis-section rule yet.
+
+### Decisions worth Peter's eye
+- **Zones are drafted, not drawn.** Peter chose this over exporting polygons from CAD/QGIS. `draft_zones()` takes a corner, an edge, a share, a depth, and builds axis-aligned shapes; it knows nothing about the actual bed lines. The caption says "schematic, not surveyed". If a zone is wrong, change the parameter in the notes file, not the code.
+- The swales are drawn from the rear corners along the sides to the rain garden and cross the back yard diagonally at the end; a real swale follows the grade. The DEM's low spots (the profile's low point behind the house, the back corner tapering to the south edge) are what the notes describe, but the line is not fitted to them.
+- The canopy band is a field observation ("about a quarter of the back lot, west side") and is labeled as such on the map.
+- The sun-path diagram is data, not judgment, and could live in section 06; it opens 07 because it is the premise for the light-based opportunities that follow.
+
+### Not validated generally
+`slab()` and `edge_strip()` are axis-aligned and assume the street side is one of E/W/N/S; a lot on a diagonal street or a flag lot will need rotated slabs. The label repel is tuned for six labels on one small lot. Parcels without a notes file get the sun path and no plan (the renderer omits the optional card), which is the honest state.
+
+---
+
+## Review notes, sections 04 to 08 (Peter, 2026-09-19) — held for the revision pass, except where marked applied
+
+**Product-level, framing every note below:** the prototype has cost roughly $70 of agent time to build; a production assessment cannot cost $8 to $100 of agent build each. Peter's target is $10 to $15 per assessment with the scripts templated and the agent only finding data. Most of what follows should therefore become **automated, not agent-driven**, and any visual that needs site-specific drafting by an agent (the section 07 plan) is out. Record this in `WORKFLOW_SPEC.md`'s business framing when the spec is next touched.
+
+### Section 07
+1. **The drafted opportunities plan is rejected, applied 2026-09-19.** This is a site assessment, not a design; drawing swales and beds is designing. As drawn it was also illegible: too busy for a client, and the swale line read as a square in the back yard rather than water carried around the house. Sites differ too much for schematic drafting to scale. The code (`draft_zones`, `render_site_plan_ked`) stays in `site_synthesis.R` as a record; the renderer and build no longer draw it.
+2. **The sun-path diagram moves to section 06, applied 2026-09-19.** Understanding the sun's arc is the first step in reading sun and shade through the seasons; it opens section 06 now.
+3. The edited prose is good for a prototype.
+
+### Section 06
+4. **The summer sun-and-shade map renders grainy.** The heat load raster is drawn with `geom_raster(interpolate = TRUE)` on the 0.78 ft upsampled grid and svglite rasterizes it; the shade overlay is a polygon and is crisp. Candidates: draw the index as smoothed class polygons (as the section 02 slope classes are), or render the raster at higher resolution before embedding.
+
+### Section 05
+5. **The soil map mostly says "one soil unit".** Illustrating the surrounding units is of doubtful value to a client; short descriptions of the neighbors' soils in words may serve better than a map.
+6. **The horizon profiles are not the right graphic.** Showing Urban land as a block illustrates bad data; the parcel itself is effectively Beltline. Better: go into the details of the soils on the property itself, and describe the surrounding soils briefly. The plan view may not be the right form at all; **more research needed** on how to visualize soils for a layperson.
+
+### Section 04
+7. **Climate chart: add extremes.** The averages read as a normalized curve; add a line for record or extreme highs and lows inside the band, ideally as felt temperature (heat index, wind chill): this summer saw heat indexes of 114°F and winters go well below 30°F. Source candidates: the same GHCN-Daily station record already cached (TMAX/TMIN daily extremes are in the same endpoint; heat index needs humidity, which GHCN-Daily lacks and ISD hourly has).
+8. **Thirty-year normals will feel irrelevant soon.** Grey out the 1991–2020 normals and foreground the last five years' averages. The product's purpose in 07 is to prepare clients for dry summers, hot summers and shifting microclimate, so the recent record matters more than the normal. Same station record can supply it.
+9. Wind roses: good.
+
+### Section 08 and sources throughout
+10. **Footnotes per visualization**, with the source link, collected at the bottom of each section; then in section 08 a bibliography in a scientific citation style (APA or similar), with authors where the source has them; links can live in either place.
+11. **Methods, briefly, per section 02 to 07** in section 08: say where the report interpolates or infers from hard data (section 02: 0.25 ft contours interpolated from the 3 ft DEM; 06: placeholder building height, no tree shade; 05: complex shares describe the unit, not the lot; and so on). Section 01 needs no method.
 
 ---
 
