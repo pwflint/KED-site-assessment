@@ -103,10 +103,12 @@ viz_card <- function(media, family, caption = NULL, required = TRUE, extra = "",
   sprintf('<div class="viz-card scroll-reveal">%s%s%s%s</div>', head, body, extra, cap)
 }
 
+# Label above value (Peter, 2026-09-18): the label names the concept, the
+# value answers it, so "Ground drains toward / Southeast" reads in order.
 stat <- function(value, label) {
   if (is.null(value)) return("")
-  sprintf('<div class="stat"><div class="stat-value">%s</div><div class="stat-label">%s</div></div>',
-          esc(value), esc(label))
+  sprintf('<div class="stat"><div class="stat-label">%s</div><div class="stat-value">%s</div></div>',
+          esc(label), esc(value))
 }
 
 stat_row <- function(...) {
@@ -440,6 +442,9 @@ REPORT_CSS <- "/* ── Report layout (on top of the design system) ── */
 .scroll-section .viz-card { margin-top: var(--space-4); }
 .scroll-section .viz-card + .viz-card { margin-top: var(--space-5); }
 .stat-row { margin: var(--space-4) 0 var(--space-5); }
+/* Stats are subheadings under the section title, not peers of it (Peter, 2026-09-18): h3 size, label first */
+.stat-value { font-size: var(--size-h3); }
+.stat-label { order: -1; }
 .viz-placeholder { aspect-ratio: 5 / 3; border-radius: var(--radius-media); display: flex; align-items: center; justify-content: center; font-size: var(--size-caption); }
 .viz-frame { border-radius: var(--radius-media); overflow: hidden; }
 .viz-frame svg { width: 100%; height: auto; display: block; }

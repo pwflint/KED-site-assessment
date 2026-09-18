@@ -94,6 +94,7 @@ Each also has `-fill` (step 02, for light tints) and `-text` (step 07, for label
 | Eyebrow labels | Poppins | 500 | 0.7rem, uppercase, 0.12em tracking |
 | Captions | Poppins | 300 | 0.85rem |
 | Stat values | Cabin | 700 | `--size-h2` |
+| *(report override, 2026-09-18)* Stat values | Cabin | 700 | `--size-h3`, label above value — set in `R/report/render_report.R`, not yet synced to the design project |
 | Chart axis labels | Poppins | 400 | `--size-small` |
 | Chart titles | Cabin | 700 | `--size-h3` |
 
