@@ -304,8 +304,7 @@ While prototyping the neighborhood-scale main image, Peter raised that HUC-deriv
 **Not yet built as an acquisition function** - used ad hoc in the same visualization prototype session as the river/ecoregion work above.
 
 ### Status
-**Current:** No acquisition function yet — this was ad hoc exploratory code during a visualization sketch, not promoted to `R/acquisition/`.
-**Target:** A function returning the parcel's own principal river (by HUC06 name) reliably; the "other rivers" context set is explicitly out of scope until the reservoir-fragmentation problem is solved per-river.
+**Current (2026-09-18):** `R/acquisition/hydrography.R` `get_principal_river(river_name, area_sf)` returns the parcel's own principal river clipped to the state, cached per state under `data/` with provenance. The name is still the `paste(huc06_name, "River")` heuristic from the caller. The "other rivers" context set remains out of scope until the reservoir-fragmentation problem is solved per-river.
 
 ---
 

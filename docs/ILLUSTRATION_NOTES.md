@@ -28,7 +28,8 @@ This document tracks design decisions, judgment calls, and rejected approaches f
 - [x] Neighborhood-scale main image (contours + local hydrology + watershed boundary) — prototype settled, `R/illustrate/neighborhood_context.R`
 - [x] Parcel-scale illustration, two graphics — prototypes settled, `R/illustrate/parcel_base_map.R`, `parcel_slope_drainage.R`, `parcel_building_mask.R`
 - [x] Section 02 client-facing set (base map, slope/drainage, ground profile, aspect rose) styled to the design system — first pass 2026-09-17, `R/illustrate/parcel_topography.R`; see the section near the end of this document
-- [x] Section 03 client-facing set (parcel flow arrows, self-rendered neighborhood subwatershed map) — first pass 2026-09-18, `R/illustrate/parcel_hydrology.R`; see the last section
+- [x] Section 03 client-facing set (parcel flow arrows, self-rendered neighborhood subwatershed map) — first pass 2026-09-18, `R/illustrate/parcel_hydrology.R`
+- [x] Section 01 client-facing set (regional inset, neighborhood orientation map) — first pass 2026-09-18, `R/illustrate/regional_orientation.R`; see the last section
 - [ ] Prose for any of the above — explicitly deferred by Peter until the writing approach itself is validated; do not draft unprompted
 
 ---
@@ -171,6 +172,8 @@ Verdict: good first iteration, minor edits. Recorded here so the revision pass h
 5. **Aspect rose — keep.** Unexpected and useful.
 6. **Slope distribution bars — keep.**
 
+7. **(Added 2026-09-18) Label buildings with their addresses.** When the neighbor footprint is cropped to the map, label it with its street address; label the subject parcel's building with its own address too. Applies to the section 02 base map and the section 03 parcel flow map alike (same base).
+
 Not changed yet: the code still produces the first-pass versions. The revision pass should re-verify in the browser at desktop and phone widths, light and dark, as before.
 
 ---
@@ -194,3 +197,33 @@ Watershed (HUC12), river basin (HUC06), FEMA zone plus subtype, and "ground drai
 
 ### Not validated generally
 The 2,500 ft extent (still chosen for this parcel's distance to its boundary), the 1,000 ft major-reach threshold, the three-road label limit, and the Raleigh-only hydrology source. A parcel outside Raleigh has no reach layer yet. A parcel deep inside its HUC12 will show a tinted frame with no boundary, which may need a wider extent or a different device.
+
+### Review notes, first pass (Peter, 2026-09-18) — held for a later revision pass
+
+1. **Parcel flow map:** same two issues as the section 02 base map (it is the same base): the white halo around the building footprint, and the neighbor's footprint overlapping the crop. Fix once in the shared base: crop neighbor footprints to the map, label them with their address, label the subject building with its address.
+2. **Neighborhood map, parcel marker:** the ring around the parcel is not clear. Either a larger radius, a different color (plain black/ink is fine), or drop the ring entirely. The "your parcel" label then needs to sit offset above whatever the marker becomes, and read "Your parcel" (capitalized, good grammar throughout).
+3. **Neighborhood map, flow label:** "to Walnut Creek" overlays the arrow and is unclear. Offset it to the end of the arrow, clear of the line.
+4. **Neighborhood map, road labels:** the major-road labels collide with the reach linework and other lines. Give every label a surface-colored background (label box, not bare text), including the second major road above.
+5. **Neighborhood map, label hierarchy:** the watershed labels should be bigger. They are the point of the graphic.
+6. **General:** line work interferes with labels throughout. Every label on a busy map gets a background box; placement must avoid lines, not just other labels.
+
+Carry these into section 01 as it is built (Peter's instruction): label boxes on busy maps, offset labels off their anchors, address labels on buildings, marker clarity.
+
+
+---
+
+## Section 01, client-facing set (`R/illustrate/regional_orientation.R`)
+
+**Job:** the report's opening zoom-out and its first step in. Built 2026-09-18 with Peter's section 03 labeling notes applied from the start: every label on a busy map in a surface-colored box, labels offset from their anchors with leaders, the subject labeled with its address, a solid parcel marker rather than a thin ring.
+
+### Graphic 1, regional inset
+The July composition (`regional_inset.R`), restyled: state outline material-warm-03 on the card surface; Level III ecoregion canopy-01 with canopy-03 edge; Level IV canopy-02 with canopy-04 edge; the HUC06 river water-04; the parcel a bloom-05 dot with an ink outline. All four labels (PIEDMONT, Northern Outer Piedmont, Neuse River, Your parcel) sit in one repelled layer with directional nudges so they clear each other and the marker. The state outline and the river are now cached under `data/nc/` with provenance (the July notes asked for exactly this); the ecoregion polygons are still a per-parcel query (small) and clipped to the state at render time. `get_principal_river()` in `R/acquisition/hydrography.R` promotes the ad hoc NHD query; the "HUC06 name + River" heuristic and the reservoir-fragment limitation carry over unchanged.
+
+### Graphic 2, neighborhood orientation
+New. The block the client recognizes, at a 900 ft radius: named streets (every named street with a run over 250 ft, label in a box, repelled), buildings material-warm-02, the parcel outlined and tinted in bloom with its own building darker, and a two-line label "Your parcel / {address}" offset above on a leader. No data display at all: its only job is "yes, this is your parcel" (`WORKFLOW_SPEC.md` step 4). It reuses the section 03 road and building caches, so it costs no new fetch. The July neighborhood prototype (contours + hydrology + HUC12) is now section 03's second graphic, not this one.
+
+### Real bug caught
+`KED$canopy` did not exist: the token list in `parcel_topography.R` only carried the families sections 02 and 03 used, so the ecoregion label colors were NULL and the data frame failed with a misleading "differing number of rows" error. Canopy and understory added; the design system's other families (groundcover, chicory, coneflower, bloom scale) are still not in the list and should be added when a section needs them.
+
+### Not validated generally
+The 900 ft orientation radius and the 250 ft minimum street run are tuned on a dense urban grid; a rural parcel may need a wider frame and fewer labels. The regional inset's label nudges are tuned to a parcel in the eastern Piedmont; a coastal or mountain parcel will put the marker near a state edge and the nudges may push labels off the map.

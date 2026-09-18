@@ -1,8 +1,8 @@
 # Builds a site assessment report from live data for one parcel.
 #
-# Scope today: cover + sections 02 (Topography and landform) and 03 (Hydrology
-# and drainage) on real data; the other sections render their honest "not
-# available" state until their pipelines are wired in. No prose is generated here (that is deliberately
+# Scope today: cover + sections 01 (Regional context), 02 (Topography and
+# landform) and 03 (Hydrology and drainage) on real data; the other sections
+# render their honest "not available" state until their pipelines are wired in. No prose is generated here (that is deliberately
 # deferred), so the section shows numbers and graphics without a narrative.
 #
 # The site is passed by environment variable, never written into the repo:
@@ -23,9 +23,11 @@
 suppressPackageStartupMessages({library(sf); library(terra); library(jsonlite)})
 for (f in c("R/acquisition/parcel.R", "R/acquisition/dem.R", "R/acquisition/building_footprint.R",
             "R/acquisition/watershed.R", "R/acquisition/flood.R", "R/acquisition/roads.R",
+            "R/acquisition/ecoregion.R", "R/acquisition/hydrography.R", "R/acquisition/boundaries.R",
             "R/acquisition/local_cache.R", "R/illustrate/basemap_tiles.R", "R/illustrate/neighborhood_context.R",
             "R/illustrate/parcel_building_mask.R", "R/illustrate/parcel_topography.R",
-            "R/illustrate/parcel_hydrology.R", "R/report/render_report.R")) source(f)
+            "R/illustrate/parcel_hydrology.R", "R/illustrate/regional_orientation.R",
+            "R/report/render_report.R")) source(f)
 
 need <- function(var) {
   v <- Sys.getenv(var)
@@ -75,6 +77,23 @@ hstats <- hydrology_stats(topo, ws, flood, hucs)
 svg_flow <- ggplot_to_svg(render_parcel_flow_ked(topo), 7.6, 5.2)
 svg_nbhd <- ggplot_to_svg(render_neighborhood_hydrology_ked(nb), 7.6, 7.2)
 
+# ---- section 01: regional context ------------------------------------------
+message("Regional context ...")
+eco <- get_ecoregion(parcel)
+state_abbr <- "NC"
+state <- cached_layer(state_abbr, "state_outline", function() get_state_outline(state_abbr),
+                      "US Census cartographic boundary files (states, 1:500k) via tigris", "Census CB, tigris default year (2021)")
+river_name <- paste(ws$huc06$name, "River")   # heuristic, see R/acquisition/hydrography.R
+river <- cached_layer(state_abbr, paste0("river_", tolower(gsub("[^A-Za-z]", "", ws$huc06$name))),
+                      function() get_principal_river(river_name, state),
+                      NHD_FLOWLINE_SMALLSCALE_URL, "USGS NHD Flowline - Small Scale, as served")
+reg <- prep_regional(parcel, eco, state, river, ws$huc06$name)
+orient <- prep_neighborhood_orientation(parcel, roads, get_building_footprints(parcel, county = county, buffer_ft = 900),
+                                        tools::toTitleCase(tolower(parcel$siteadd)))
+rstats <- regional_stats(eco, ws)
+svg_regional <- ggplot_to_svg(render_regional_inset_ked(reg), 7.6, 3.8)
+svg_orient   <- ggplot_to_svg(render_neighborhood_orientation_ked(orient), 7.6, 6.2)
+
 centroid <- st_coordinates(st_centroid(st_geometry(st_transform(parcel, 4326))))
 
 payload <- list(
@@ -84,6 +103,11 @@ payload <- list(
   assessment_date = format(Sys.Date()),
   practitioner = "Peter W Flint",
   county = parcel$cntyname,
+
+  ecoregion_l3 = rstats$ecoregion_l3,
+  ecoregion_l4 = rstats$ecoregion_l4,
+  regional_map_svg = svg_regional,
+  neighborhood_map_svg = svg_orient,
 
   elevation_change_ft = stats$elevation_change_ft,
   max_slope_pct = unname(stats$max_slope_pct),
@@ -110,6 +134,9 @@ payload <- list(
     list(name = "NC OneMap parcels (NC1Map_Parcels)", url = "https://www.nconemap.gov", accessed = format(Sys.Date())),
     list(name = "NC OneMap 3 ft bare-earth DEM (DEM03)", url = "https://www.nconemap.gov", accessed = format(Sys.Date())),
     list(name = "NC building footprints (NC Spatial Data Download, 2020-2022 inventory)", url = "https://sdd.nc.gov", accessed = format(Sys.Date())),
+    list(name = "EPA Level III and IV Ecoregions", url = "https://www.epa.gov/eco-research/ecoregions", accessed = format(Sys.Date())),
+    list(name = "USGS National Hydrography Dataset (river linework)", url = "https://www.usgs.gov/national-hydrography", accessed = attr(river, "manifest")$downloaded %||% format(Sys.Date())),
+    list(name = "US Census Bureau cartographic boundary files (state outline)", url = "https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html", accessed = attr(state, "manifest")$downloaded %||% format(Sys.Date())),
     list(name = "USGS Watershed Boundary Dataset (HUC06, HUC12)", url = "https://www.usgs.gov/national-hydrography/watershed-boundary-dataset", accessed = format(Sys.Date())),
     list(name = "FEMA National Flood Hazard Layer", url = "https://www.fema.gov/flood-maps/national-flood-hazard-layer", accessed = format(Sys.Date())),
     list(name = "City of Raleigh Hydrology", url = "https://services.arcgis.com/v400IkDOw1ad7Yad/arcgis/rest/services/Hydrology/FeatureServer", accessed = attr(hydro, "manifest")$downloaded %||% format(Sys.Date())),

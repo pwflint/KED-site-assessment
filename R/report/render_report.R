@@ -227,12 +227,19 @@ source_list <- function(srcs) {
 sec_regional <- function(p) {
   title <- if (has(p$ecoregion_l3)) sprintf("Your place in the %s", p$ecoregion_l3) else "Regional context"
   county <- if (has(p$county)) sprintf("%s County GIS", esc(p$county)) else "county GIS"
+  basin <- if (has(p$huc06_name)) sprintf("%s River basin", p$huc06_name) else NULL
   section("regional", "01 — Regional context", title,
     paras(p$ecoregion_description, "lede"),
+    stat_row(stat(p$ecoregion_l3, "Ecoregion"),
+             stat(p$ecoregion_l4, "Local ecoregion"),
+             stat(basin, "River basin"),
+             stat(p$huc12_name, "Watershed")),
     viz_card(p$regional_map_svg, "canopy",
-             sprintf("Source: EPA Level III/IV Ecoregions, NHD Flowlines. Parcel boundary from %s.", county)),
+             sprintf("The parcel in its region: the %s ecoregion (EPA Level III, light green) and the %s ecoregion within it (Level IV, darker), both clipped to the state, with the %s. Source: EPA Ecoregions, USGS National Hydrography Dataset, US Census state boundary.",
+                     esc(p$ecoregion_l3 %||% "Level III"), esc(p$ecoregion_l4 %||% "Level IV"),
+                     if (has(p$huc06_name)) esc(paste(p$huc06_name, "River")) else "principal river")),
     viz_card(p$neighborhood_map_svg, "canopy",
-             "Neighborhood context. Source: NCOneMap 1m DEM contours, local hydrology, USGS Watershed Boundary Dataset (HUC12).",
+             sprintf("The block around the parcel: named streets and buildings, the parcel outlined. Roads from OpenStreetMap, buildings from the NC statewide footprint inventory, parcel line from %s.", county),
              required = FALSE))
 }
 

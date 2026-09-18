@@ -263,8 +263,9 @@ Full viewport, centered. Eyebrow "Site Assessment" in accent. `client_name` as h
 - Eyebrow: `01 — Regional context`
 - Title: derive from ecoregion, e.g. "Your place in the {ecoregion_l3}" — adapt to actual data
 - Body: `ecoregion_description`
+- Stat row (added 2026-09-18): ecoregion (L3), local ecoregion (L4), river basin (HUC06), watershed (HUC12)
 - Viz card: embed `regional_map_svg` inline. If null, show placeholder with canopy-01 background.
-- If `neighborhood_map_svg` present: second viz card
+- If `neighborhood_map_svg` present: second viz card. As of 2026-09-18 this is the neighborhood *orientation* map (named streets, buildings, the parcel outlined and labeled with its address; no data display), produced by `R/illustrate/regional_orientation.R`. The contour/hydrology neighborhood graphic moved to section 03.
 - Caption: "Source: EPA Level III/IV Ecoregions, NHD Flowlines. Parcel boundary from {county} GIS."
 
 ### 02 — Topography and landform
