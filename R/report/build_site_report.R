@@ -1,11 +1,12 @@
 # Builds a site assessment report from live data for one parcel.
 #
 # Scope today: cover + sections 01 (Regional context), 02 (Topography and
-# landform), 03 (Hydrology and drainage), 04 (Climate and wind) and 05 (Soils
-# and infiltration) on real data; the other sections render their honest
-# "not available" state until their pipelines are wired in. No prose is
-# generated here (that is deliberately deferred), so each section shows
-# numbers and graphics without a narrative.
+# landform), 03 (Hydrology and drainage), 04 (Climate and wind), 05 (Soils
+# and infiltration) and 06 (Microclimate) on real data, and 07 (Vulnerabilities
+# and opportunities) from the practitioner's notes file when one exists; the
+# other sections render their honest "not available" state. No prose is
+# generated here (that is deliberately deferred): section 07's words are the
+# practitioner's own, read from the notes file.
 #
 # The site is passed by environment variable, never written into the repo:
 # this repository is public and real client addresses stay out of tracked
@@ -35,6 +36,7 @@ for (f in c("R/acquisition/parcel.R", "R/acquisition/dem.R", "R/acquisition/buil
             "R/illustrate/parcel_building_mask.R", "R/illustrate/parcel_topography.R",
             "R/illustrate/parcel_hydrology.R", "R/illustrate/regional_orientation.R",
             "R/illustrate/climate_wind.R", "R/illustrate/parcel_soils.R",
+            "R/acquisition/canopy.R", "R/illustrate/parcel_microclimate.R", "R/illustrate/site_synthesis.R",
             "R/report/render_report.R")) source(f)
 
 need <- function(var) {
@@ -127,6 +129,32 @@ svg_soil_profile <- ggplot_to_svg(render_soil_profile_ked(so), 7.6, 5.2)
 
 centroid <- st_coordinates(st_centroid(st_geometry(st_transform(parcel, 4326))))
 
+# ---- section 07: the practitioner's notes ----------------------------------
+# Site-specific judgment (narrative, vulnerabilities, opportunities, the
+# zones to draw) lives in a gitignored notes file, never in this script:
+# KED_PRACTITIONER_NOTES, or output/{slug}_notes.json when that exists.
+slug <- address_slug(paste0(parcel$siteadd, ", ", parcel$scity, ", NC"))
+notes_path <- Sys.getenv("KED_PRACTITIONER_NOTES", file.path(out_dir, paste0(slug, "_notes.json")))
+notes <- if (file.exists(notes_path)) { message("Practitioner notes: ", notes_path); fromJSON(notes_path, simplifyVector = FALSE) } else NULL
+
+# ---- section 06: microclimate ----------------------------------------------
+message("Microclimate ...")
+mc <- prep_microclimate(topo, lat_deg = centroid[2])
+mstats <- microclimate_stats(mc, topo)
+canopy_radius_ft <- 300
+canopy_nearby <- get_canopy_extent(parcel, buffer_ft = canopy_radius_ft)   # 30 m NLCD, coarse; context only
+canopy_nearby_pct <- if (inherits(canopy_nearby$canopy_pct_raster, "SpatRaster"))
+  round(mean(values(canopy_nearby$canopy_pct_raster), na.rm = TRUE)) else NULL
+mc_bb <- st_bbox(st_buffer(topo$parcel, 20)); mc_asp <- as.numeric((mc_bb["xmax"] - mc_bb["xmin"]) / (mc_bb["ymax"] - mc_bb["ymin"]))
+svg_heat  <- ggplot_to_svg(render_heat_map_ked(mc), 7.6, 7.6 / mc_asp + 0.3)
+svg_shade <- ggplot_to_svg(render_shade_pair_ked(mc), 7.6, 3.8 / mc_asp + 0.7)
+
+# ---- section 07: synthesis graphics ----------------------------------------
+message("Synthesis ...")
+svg_sun <- ggplot_to_svg(render_sun_path_ked(topo, centroid[2]), 7.6, 7.4)
+# The drafted opportunities plan (draft_zones/render_site_plan_ked) was rejected at
+# review 2026-09-19 and is not built; see docs/ILLUSTRATION_NOTES.md, section 07.
+
 payload <- list(
   client_name = client_name,
   address = paste0(parcel$siteadd, ", ", parcel$scity, ", NC"),
@@ -191,6 +219,32 @@ payload <- list(
   soil_map_svg = svg_soil_map,
   soil_profile_svg = svg_soil_profile,
 
+  building_footprint_sqft = mstats$building_footprint_sqft,
+  open_ground_sqft = mstats$open_ground_sqft,
+  south_facing_pct = mstats$south_facing_pct,
+  warm_ground_pct = mstats$warm_ground_pct,
+  cool_ground_pct = mstats$cool_ground_pct,
+  building_height_ft_assumed = mstats$building_height_ft_assumed,
+  shade_hours_window = mstats$shade_hours_window,
+  winter_noon_sun_deg = mstats$winter_noon_sun_deg,
+  winter_full_sun_pct = mstats$winter_full_sun_pct,
+  winter_shade_2h_pct = mstats$winter_shade_2h_pct,
+  winter_shade_4h_pct = mstats$winter_shade_4h_pct,
+  summer_noon_sun_deg = mstats$summer_noon_sun_deg,
+  summer_full_sun_pct = mstats$summer_full_sun_pct,
+  summer_shade_2h_pct = mstats$summer_shade_2h_pct,
+  summer_shade_4h_pct = mstats$summer_shade_4h_pct,
+  canopy_cover_pct = NULL,
+  canopy_cover_nearby_pct = canopy_nearby_pct,
+  canopy_cover_nearby_radius_ft = canopy_radius_ft,
+  heat_accumulation_map_svg = svg_heat,
+  shade_map_svg = svg_shade,
+
+  synthesis_narrative = notes$synthesis_narrative,
+  vulnerabilities = notes$vulnerabilities,
+  opportunities = notes$opportunities,
+  sun_path_svg = svg_sun,
+
   data_sources = list(
     list(name = "NC OneMap parcels (NC1Map_Parcels)", url = "https://www.nconemap.gov", accessed = format(Sys.Date())),
     list(name = "NC OneMap 3 ft bare-earth DEM (DEM03)", url = "https://www.nconemap.gov", accessed = format(Sys.Date())),
@@ -204,15 +258,16 @@ payload <- list(
     list(name = "OpenStreetMap contributors (roads)", url = "https://www.openstreetmap.org/copyright", accessed = attr(roads, "manifest")$downloaded %||% format(Sys.Date())),
     list(name = "PRISM Climate Group, Oregon State University (30-year normals 1991-2020, 4 km)", url = "https://prism.oregonstate.edu/normals/", accessed = format(Sys.Date())),
     list(name = sprintf("NOAA NCEI GHCN-Daily summaries, station %s (%s)", cstats$wind_station_id, cstats$wind_station_name), url = "https://www.ncei.noaa.gov/access/services/data/v1", accessed = format(Sys.Date())),
-    list(name = "NRCS SSURGO via Soil Data Access (map unit polygons, components, horizons)", url = "https://sdmdataaccess.nrcs.usda.gov", accessed = attr(soil_polys, "manifest")$downloaded %||% format(Sys.Date()))
+    list(name = "NRCS SSURGO via Soil Data Access (map unit polygons, components, horizons)", url = "https://sdmdataaccess.nrcs.usda.gov", accessed = attr(soil_polys, "manifest")$downloaded %||% format(Sys.Date())),
+    list(name = "USFS NLCD Tree Canopy Cover, 30 m (canopy near the parcel)", url = "https://www.mrlc.gov/data/type/tree-canopy-cover", accessed = format(Sys.Date()))
   )
 )
 
-slug <- address_slug(payload$address)
 payload_path <- file.path(out_dir, paste0(slug, "_payload.json"))
 write_json(payload, payload_path, auto_unbox = TRUE, null = "null", pretty = TRUE, digits = NA)
 saveRDS(list(parcel = parcel, dem = wrap(dem), bldgs = bldgs, stats = stats, ws = ws, flood = flood, hstats = hstats,
-             normals = normals, wind = wind, cstats = cstats, soils = so[c("own", "own_comps", "hz", "ag", "in_frame")], sstats = sstats),
+             normals = normals, wind = wind, cstats = cstats, soils = so[c("own", "own_comps", "hz", "ag", "in_frame")], sstats = sstats,
+             mstats = mstats),
         file.path(out_dir, paste0(slug, "_data.rds")))
 out <- render_site_assessment(payload, out_dir = out_dir)
 message("Wrote ", payload_path, "\nWrote ", out)

@@ -403,24 +403,61 @@ sec_soils <- function(p) {
     soil_units_html(units))
 }
 
-sec_microclimate <- function(p) {
-  building <- if (has(p$building_footprint_sqft))
-    sprintf("<p class=\"lede\">The primary structure covers about %s sq ft of the parcel.</p>", fmt(p$building_footprint_sqft))
-  else ""
-  canopy <- if (!has(p$canopy_cover_pct))
-    '<p class="lede">Canopy cover data is not available at sufficient resolution for this parcel.</p>'
-  else sprintf('<p class="lede">Tree canopy covers about %s%% of the parcel.</p>', fmt(p$canopy_cover_pct))
-  section("microclimate", "06 — Microclimate", "Heat, shade, and air",
-    paras(p$micro_description, "lede"),
-    building, canopy,
-    viz_card(p$heat_accumulation_map_svg, "gold",
-             "Source: Derived from DEM aspect, NLCD canopy cover, and building footprint geometry.",
-             required = FALSE))
+# Section 06 (rewritten 2026-09-19 for real data): sun and shade from the DEM
+# and the building footprints. Tree shade is not drawn; the canopy figure is
+# the coarse NLCD read around the parcel, labeled as such.
+heat_legend <- function(shade_min_hours) {
+  sprintf('<div class="legend viz-legend">
+<div class="legend-item"><div class="legend-swatch" style="background:var(--gold-01);border:1px solid var(--line)"></div>Faces away from the sun, cooler</div>
+<div class="legend-item"><div class="legend-swatch" style="background:var(--gold-02)"></div>Level ground</div>
+<div class="legend-item"><div class="legend-swatch" style="background:var(--ember-03)"></div>Faces the afternoon sun, warmer</div>
+<div class="legend-item"><div class="legend-swatch" style="background:var(--understory-03)"></div>Shaded by a building %s hours or more at midday in summer</div>
+</div>', fmt(shade_min_hours))
 }
 
-# Practitioner's voice: rendered verbatim, no source citation.
+shade_legend <- '<div class="legend viz-legend">
+<div class="legend-item"><div class="legend-swatch" style="background:var(--understory-01);border:1px solid var(--line)"></div>Under 1 hour</div>
+<div class="legend-item"><div class="legend-swatch" style="background:var(--understory-02)"></div>1 to 2 hours</div>
+<div class="legend-item"><div class="legend-swatch" style="background:var(--understory-03)"></div>2 to 4 hours</div>
+<div class="legend-item"><div class="legend-swatch" style="background:var(--understory-05)"></div>4 to 6 hours</div>
+</div>'
+
+sec_microclimate <- function(p) {
+  canopy <- if (has(p$canopy_cover_nearby_pct))
+    sprintf('<p class="lede">Tree canopy is not mapped at parcel scale in the public data. The national 30 m canopy survey puts tree cover within %s ft of the parcel at about %s%%, a coarse figure that includes the surrounding lots and street trees.</p>',
+            fmt(p$canopy_cover_nearby_radius_ft), fmt(p$canopy_cover_nearby_pct))
+  else if (!has(p$canopy_cover_pct))
+    '<p class="lede">Canopy cover data is not available at sufficient resolution for this parcel.</p>'
+  else sprintf('<p class="lede">Tree canopy covers about %s%% of the parcel.</p>', fmt(p$canopy_cover_pct))
+  h <- p$building_height_ft_assumed
+  hours <- p$shade_hours_window
+  window <- if (has(hours) && length(hours) == 2) sprintf("%s am to %s pm solar time", fmt(hours[[1]]), fmt(as.numeric(hours[[2]]) - 12)) else "the middle of the day"
+  infer <- if (has(h)) sprintf(" Building heights are not in the public inventory; every building is drawn %s ft tall until measured on site. Tree shade is not included.", fmt(h)) else ""
+  section("microclimate", "06 \u2014 Microclimate", "Heat, shade, and air",
+    paras(p$micro_description, "lede"),
+    stat_row(stat(fmt(p$building_footprint_sqft, 0, " sq ft"), "Building footprint"),
+             stat(fmt(p$south_facing_pct, 0, "%"), "Sloping ground facing south"),
+             stat(fmt(p$summer_full_sun_pct, 0, "%"), "Open ground in full midday sun, summer"),
+             stat(fmt(p$winter_shade_2h_pct, 0, "%"), "Open ground shaded 2+ hours, winter")),
+    canopy,
+    viz_card(p$sun_path_svg, "gold", title = "The sun\u2019s path over the lot",
+             caption = "The sun\u2019s daily arc on the summer solstice, the equinoxes and the winter solstice, seen from above: direction around the ring, height by distance from the house (a low sun sits far out, a high sun close in). Sunrise and sunset are solar time. The same geometry holds for every lot at this latitude; what changes is what stands in the way. Understanding this arc is the first step in reading sun and shade through the seasons (moved here from section 07 at Peter\u2019s review, 2026-09-19).",
+             required = FALSE),
+    viz_card(p$heat_accumulation_map_svg, "gold", title = "Summer sun and shade",
+             caption = sprintf("How strongly each part of the open ground faces the sun, from the slope and aspect of the masked DEM (McCune and Keon heat load index, relative to level ground), with the ground the buildings shade for two or more hours between %s on the summer solstice laid over it.%s Source: NC OneMap DEM, NC building footprints.", window, infer),
+             extra = heat_legend(2)),
+    viz_card(p$shade_map_svg, "understory", title = "Hours of building shade, winter and summer",
+             caption = sprintf("Hours each part of the open ground sits in a building\u2019s shadow between %s on the two solstices, from the sun\u2019s path at this latitude. The neighbors\u2019 buildings count too; a house to the south shades a lot most in winter, when the sun is low.%s Source: NC building footprints.", window, infer),
+             extra = shade_legend, required = FALSE))
+}
+
+# Practitioner's voice: rendered as given, no source citation. The drafted
+# opportunities plan built 2026-09-19 was rejected at review the same day
+# (this is an assessment, not a design; the drawing was too busy to read) and
+# the sun-path diagram moved to section 06. The plan code stays in
+# R/illustrate/site_synthesis.R as a record; the renderer no longer draws it.
 sec_synthesis <- function(p) {
-  section("synthesis", "07 — Vulnerabilities and opportunities", "What this site is telling us",
+  section("synthesis", "07 \u2014 Vulnerabilities and opportunities", "What this site is telling us",
     paras(p$synthesis_narrative, "lede"),
     bullet_list(p$vulnerabilities, "Vulnerabilities"),
     bullet_list(p$opportunities, "Opportunities"))

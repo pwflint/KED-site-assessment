@@ -1,5 +1,5 @@
 {
-  "_note": "FICTIONAL sample payload for layout review only. No real client, address, or parcel. Numbers follow the example values in docs/BUILD_AGENT_PROMPT.md; prose reuses the design template's default copy. Visualization fields are null except one small inline SVG, so the renderer's placeholder, omission, and inline-SVG paths are all exercised. Sections 04 and 05 fields follow the 2026-09-18 payload additions (seasonal highs/lows, wind station, map unit components, map legend).",
+  "_note": "FICTIONAL sample payload for layout review only. No real client, address, or parcel. Numbers follow the example values in docs/BUILD_AGENT_PROMPT.md; prose reuses the design template's default copy. Visualization fields are null except one small inline SVG, so the renderer's placeholder, omission, and inline-SVG paths are all exercised. Sections 04 and 05 fields follow the 2026-09-18 payload additions (seasonal highs/lows, wind station, map unit components, map legend). Section 06 fields follow the 2026-09-19 additions (sun and shade stats, coarse canopy figure).",
   "client_name": "Sample Client",
   "address": "1 Example Street, Raleigh, NC 27601",
   "coordinates": {
@@ -157,9 +157,27 @@
   "soil_map_svg": null,
   "soil_profile_svg": null,
   "soils_description": "Soil determines drainage, infiltration, and what can root deeply enough to persist. SSURGO data identifies the map units under this parcel and their behavior.",
-  "heat_accumulation_map_svg": null,
-  "canopy_cover_pct": null,
   "building_footprint_sqft": 1200,
+  "open_ground_sqft": 4900,
+  "south_facing_pct": 55,
+  "building_height_ft_assumed": 30,
+  "shade_hours_window": [
+    9,
+    15
+  ],
+  "winter_noon_sun_deg": 31,
+  "winter_full_sun_pct": 5,
+  "winter_shade_2h_pct": 50,
+  "winter_shade_4h_pct": 10,
+  "summer_noon_sun_deg": 78,
+  "summer_full_sun_pct": 60,
+  "summer_shade_2h_pct": 15,
+  "summer_shade_4h_pct": 2,
+  "canopy_cover_pct": null,
+  "canopy_cover_nearby_pct": 20,
+  "canopy_cover_nearby_radius_ft": 300,
+  "heat_accumulation_map_svg": null,
+  "shade_map_svg": null,
   "micro_description": "Microclimate varies across even a small property. Aspect, canopy cover, and building proximity create zones of heat accumulation and cooling that determine plant stress and comfort.",
   "vulnerabilities": [
     "The steepest ground (4% of the parcel above 15% grade) sits where runoff concentrates.",
@@ -170,6 +188,8 @@
     "Zone X flood status leaves siting unconstrained by floodplain rules."
   ],
   "synthesis_narrative": "This section contains the practitioner's professional synthesis — observations from the site visit combined with the data findings above. It identifies vulnerabilities the data revealed and opportunities the site offers for ecologically grounded design.",
+  "sun_path_svg": null,
+  "site_plan_svg": null,
   "data_sources": [
     {
       "name": "EPA Level III and IV Ecoregions",
