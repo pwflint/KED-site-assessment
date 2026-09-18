@@ -40,3 +40,19 @@ get_watershed <- function(parcel_sf) {
     huc12 = get_huc_layer(parcel_sf, WBD_HUC12_LAYER, "huc12,name,tohuc")
   )
 }
+
+#' All HUC12 polygons intersecting a display extent - for labeling the
+#' neighboring subwatersheds on either side of a boundary, not for
+#' membership (get_watershed() answers that). Added 2026-09-18.
+get_huc12_in_extent <- function(area_sf) {
+  bb <- st_bbox(st_transform(area_sf, 4326))
+  resp <- GET(sprintf("%s/%d/query", WBD_URL, WBD_HUC12_LAYER), query = list(
+    geometry = sprintf("%f,%f,%f,%f", bb["xmin"], bb["ymin"], bb["xmax"], bb["ymax"]),
+    geometryType = "esriGeometryEnvelope", inSR = 4326,
+    spatialRel = "esriSpatialRelIntersects",
+    outFields = "huc12,name,tohuc", returnGeometry = "true", f = "geojson"
+  ))
+  tmp <- tempfile(fileext = ".geojson")
+  writeLines(content(resp, as = "text", encoding = "UTF-8"), tmp)
+  st_read(tmp, quiet = TRUE)
+}

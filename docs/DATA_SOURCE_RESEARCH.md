@@ -541,6 +541,28 @@ NC OneMap does have `NC1Map_Landcover` (Feature and MapServer, plus a raster var
 
 ---
 
+## Local county data cache — decision 2026-09-18, template built, not yet the production path
+
+**Decision (Peter, 2026-09-18):** the neighborhood-scale base map is self-rendered from vector layers, not a third-party raster tile. Reasoning recorded in `docs/ILLUSTRATION_NOTES.md` (basemap provider section). This section records the data-sourcing consequences so they surface when the cache is built out properly.
+
+**Two kinds of fetch, two treatments.**
+- *Per-parcel, live:* the subject parcel polygon, the DEM clip, flood zone, soils, watershed membership, ecoregion. Small, fast, specific to one property, must be current. Stay remote.
+- *Contextual, cached per county:* roads, hydrology reaches, buildings, (neighbor parcels if ever drawn). Bulky, slow-changing, only need to be roughly current at neighborhood scale. Downloaded once per county, reused, refreshed on a cadence. The building-footprint cache (`R/acquisition/building_footprint.R`) was already this pattern; `R/acquisition/local_cache.R` generalizes it with a manifest.
+
+**Staleness is about the source's vintage, not the download date.** The state footprint inventory is labeled 2020–2022; the NC DEM is mid-2010s LiDAR. A fresh download is exactly as old as an old one. The manifest records both the source's stated vintage and the download date, and the report's sources section should print the vintage. That turns "only as good as the last download" into a stated fact the client can see.
+
+**Rate of change by layer, which sets the refresh cadence:** roads and hydrology reaches, years (yearly refresh is plenty); parcels and buildings, months (the subject parcel is live anyway; a few months' lag on neighbors is invisible at neighborhood scale); DEM and HUC boundaries, effectively static until the state republishes. Default `max_age_days = 180` in `local_cache.R`, refresh on demand.
+
+**Peter's existing Wake County basemap** (vector layers, formats appropriate): usable if each layer carries provenance (source, vintage). If it doesn't, re-download the same layers once from the authoritative endpoints so the manifest is complete and a build is reproducible from a clean machine. Open: what layers, formats, and vintages it contains. Not yet inspected.
+
+**Roads.** OpenStreetMap via Overpass is what the prototype uses (validated 2026-07-24, re-checked 2026-09-17; public instance, self-identifying `User-Agent`, one query per assessment is well within its usage policy). The project's own rule prefers state/county sources; Wake County publishes a streets layer and NCDOT publishes statewide roads. Swap when the county cache is built out with provenance; the roads fetch is isolated in `R/acquisition/roads.R` so the swap is one function.
+
+**Not solved by any of this:** a source disappearing. The manifest at least records what was held and where it came from.
+
+**Prototype state:** `local_cache.R` caches by county + layer, with an optional extent hash for layers that are fetched per display extent rather than county-wide (roads via Overpass is one; a county-wide Overpass pull is too heavy). The data directory (`data/`, `KED_DATA_DIR` to override) is gitignored.
+
+---
+
 ## Research Workflow
 
 1. **Prioritize**: Which data sources are blocking progress?

@@ -277,18 +277,26 @@ sec_topography <- function(p) {
 sec_hydrology <- function(p) {
   fz <- p$flood_zone
   minimal <- !has(fz) || fz %in% c("Zone X", "Zone X (unshaded)")
-  flood <- if (!minimal) {
+  if (has(p$flood_zone_subtype) && !grepl("MINIMAL", toupper(p$flood_zone_subtype))) minimal <- FALSE
+  fz_label <- if (has(fz) && has(p$flood_zone_subtype)) sprintf("%s, %s", fz, tolower(p$flood_zone_subtype)) else fz
+  flood <- if (!minimal && has(fz)) {
     sprintf('<div class="callout scroll-reveal"><div class="eyebrow callout-eyebrow">Flood designation: %s</div>%s</div>',
-            esc(fz), paras(p$flood_zone_description))
+            esc(fz_label), paras(p$flood_zone_description))
   } else paras(p$flood_zone_description, "lede")
+  basin <- if (has(p$basin_name)) sprintf("%s River basin", p$basin_name) else NULL
   section("hydrology", "03 — Hydrology and drainage", "Where the water goes",
     paras(p$hydro_description, "lede"),
     stat_row(stat(p$watershed_name, "Watershed"),
+             stat(basin, "River basin"),
              stat(fz, "FEMA flood zone"),
-             stat(p$drainage_direction, "Drains toward")),
+             stat(if (has(p$drainage_direction)) tools::toTitleCase(p$drainage_direction) else NULL, "Ground drains toward")),
     flood,
+    viz_card(p$parcel_flow_map_svg, "water",
+             "Where water moves across the lot: the section 02 contours with downhill flow arrows over them. Longer arrows mean steeper ground. Same masked DEM, same 0.25 ft contours.",
+             required = FALSE),
     viz_card(p$hydro_map_svg, "water",
-             "Source: USGS Watershed Boundary Dataset (HUC12), local hydrology, FEMA National Flood Hazard Layer."))
+             sprintf("The parcel in its subwatershed. Tint: the %s watershed (USGS HUC12); dashed line: its boundary; blue: mapped stream reaches with flow direction; contours every 2 ft. Roads from OpenStreetMap, buildings from the NC statewide footprint inventory, flood zones from FEMA NFHL.",
+                     esc(p$watershed_name %||% "parcel's"))))
 }
 
 sec_climate <- function(p) {

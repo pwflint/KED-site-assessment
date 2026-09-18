@@ -27,7 +27,8 @@ This document tracks design decisions, judgment calls, and rejected approaches f
 - [x] Regional-scale inset (state-scale ecoregion + river context) — prototype settled, `R/illustrate/regional_inset.R`
 - [x] Neighborhood-scale main image (contours + local hydrology + watershed boundary) — prototype settled, `R/illustrate/neighborhood_context.R`
 - [x] Parcel-scale illustration, two graphics — prototypes settled, `R/illustrate/parcel_base_map.R`, `parcel_slope_drainage.R`, `parcel_building_mask.R`
-- [x] Section 02 client-facing set (base map, slope/drainage, ground profile, aspect rose) styled to the design system — first pass 2026-09-17, `R/illustrate/parcel_topography.R`; see the section at the end of this document
+- [x] Section 02 client-facing set (base map, slope/drainage, ground profile, aspect rose) styled to the design system — first pass 2026-09-17, `R/illustrate/parcel_topography.R`; see the section near the end of this document
+- [x] Section 03 client-facing set (parcel flow arrows, self-rendered neighborhood subwatershed map) — first pass 2026-09-18, `R/illustrate/parcel_hydrology.R`; see the last section
 - [ ] Prose for any of the above — explicitly deferred by Peter until the writing approach itself is validated; do not draft unprompted
 
 ---
@@ -88,6 +89,8 @@ Three providers were evaluated for a "quiet, no-label" tile backdrop:
 | Carto `light_nolabels` (Positron) | Raster | **Currently in use.** Confirmed live, confirmed genuinely label-free by direct tile inspection. **Risk, explicitly flagged by Peter and not resolved:** Carto is a smaller/earlier-stage provider than Esri; free tile terms have shifted before. |
 
 **Provider choice is explicitly deferred to when this project starts testing additional parcels/geographies** (Peter's instruction, 2026-07-28) — use Carto for now to produce working prototypes, revisit then. Do not silently swap providers without re-flagging this same tradeoff.
+
+**Decision 2026-09-18 (Peter): self-rendered vector base, no raster tile, for the client-facing neighborhood graphic.** Reopened deliberately, not silently. What changed since July: (1) the design system now exists and a raster tile cannot participate in it — it is a fixed picture of someone else's palette, cannot follow dark mode, and reads as foreign inside an ochre card, while the system's own direction for this section (water linework, material-warm structure, bloom parcel marker) describes a self-drawn map; (2) the delivered report is a self-contained file with SVG inlined, so a tile provider vanishing breaks future builds, not delivered reports — a smaller risk than it looked when the delivery format was undecided; (3) commercial use of free tile sets is the sharper question than stability (Carto's terms not verified; treat as a check, not a finding). Stock-tile fallback, if vector rendering proves too slow to get right: keep Carto as a faint desaturated underlay at low opacity, cache tiles per assessment, accept the dark-mode mismatch. `basemap_tiles.R` stays in the repo for that. Data-sourcing consequences (county cache, vintage in the manifest) are in `docs/DATA_SOURCE_RESEARCH.md`, "Local county data cache".
 
 ### Explicitly deferred (Peter's instruction, not oversight)
 - Standard extent sizing (see above)
@@ -156,3 +159,38 @@ Peter's original concern going in was resolution (a 15ft buffer gives only ~26×
 ### Not validated generally
 
 Same caveat as the prototypes: every parameter (buffers, smoothing windows, grid spacing, contour interval, the 1.5% aspect cutoff) was tuned on one small rectangular parcel with one building on a 4.8 ft relief. A larger, wooded, or irregular lot, or one with 20 ft of relief, will need the transect, the contour interval, and the profile's vertical scale revisited.
+
+### Review notes, first pass (Peter, 2026-09-18) — to be worked in a separate revision pass
+
+Verdict: good first iteration, minor edits. Recorded here so the revision pass has a checklist and the reasoning behind each item.
+
+1. **Base map — white halo around the building footprint.** A pale boundary rings the house and interrupts the tint. Not visually pleasing. Likely cause, not yet confirmed: the smoothing pass (`focal` with `na.policy = "omit"`) leaves NA cells at the mask edge and the re-mask widens them, so the card surface shows through the raster. Fix candidates: fill the tint under the building from the unmasked (interpolated) surface and only mask the *contours*, or grow the tint one cell into the footprint before drawing the building on top.
+2. **Base map — second building footprint at the bottom of the frame.** It is the neighbor's house (PID differs from the parcel's parno; confirmed, not erroneous), but as drawn it reads as an error: cut off by the frame edge, opaque, unlabeled. Either drop neighbor footprints from this graphic or keep them clipped to the raster extent, more transparent, and labeled ("neighboring residence").
+3. **Slope graphic — keep, but simplify.** The class fill is good. The per-cell arrow field is too busy for section 02 and is really hydrology. For section 02: three to five arrows showing the general direction of fall, no per-arrow labels. **The busy version is not thrown away:** flow arrows over the contours from the base map become the localized-hydrology graphic for section 03 (not yet built). Tabled until section 03 exists.
+4. **Ground profile — feels exaggerated, and the house block does not read.** The vertical exaggeration may be an artifact of the profile being squeezed into the 3:2 pair column; test it at full card width before changing the scale. The grey rectangle with the gap beneath it is not something a layperson can read. Redraw the house as a simple outline that sits on the interpolated ground line, or shade the span without a block.
+5. **Aspect rose — keep.** Unexpected and useful.
+6. **Slope distribution bars — keep.**
+
+Not changed yet: the code still produces the first-pass versions. The revision pass should re-verify in the browser at desktop and phone widths, light and dark, as before.
+
+---
+
+## Section 03, client-facing set (`R/illustrate/parcel_hydrology.R`)
+
+**Job (Peter, 2026-09-18):** show the immediate micro-context of water on the lot, then zoom out to the neighborhood. The whole report moves zoom out, zoom in, zoom out; this section is the first zoom-in after section 02, then the step back out. First pass, built on the test parcel, not validated on a second site.
+
+### Graphic 1, parcel flow
+The section 02 base map (hypsometric tint, 0.25 ft contours, buildings, parcel line) with downhill flow arrows over it, no slope labels, no class fill, no transect. Same arrow field as the slope graphic (`downhill_arrows()`, now shared), water-05, longer = steeper. Peter's review of section 02 moves the busy arrow field here; the section 02 slope graphic will be simplified to a handful of arrows in the revision pass. The contour labels are off on this one so the arrows are the only annotation.
+
+### Graphic 2, neighborhood subwatershed
+The self-rendered base, per the 2026-09-18 decision above (no raster tile). Layers, bottom to top: the parcel's own HUC12 tinted water-01 (neighbors untinted, so the tint reads as "your watershed"); flood polygon in ember-02 if FEMA returned one; contours 2 ft / 10 ft from the DEM aggregated to 25 ft cells (ochre-02/03, very light); buildings material-warm-02; roads in three weights by OSM class (residential and below thin, tertiary, primary/secondary); minor reaches water-02, major reaches (grouped by RCH_CODE, over 1,000 ft total) water-04 with one flow arrow each labeled "to {HUC12 name}"; the HUC12 boundary dashed in the accent, extracted from the unclipped polygon (the July bug); watershed names as labels on both sides of the boundary; three named through-roads labeled along their line; the parcel as a bloom-05 fill with a ring and "your parcel". Scale bar, north arrow.
+
+**Real bug caught building it:** flow direction is decided by comparing DEM elevation along the reach, and the clipped reach ends sit exactly on the frame edge where the DEM sample is NA, so no arrows were produced at first. Now elevation is compared a little way in from each end and the arrow is drawn at 80% of the way toward the downstream end so it stays in frame.
+
+**Second real finding:** the state footprint GDB stores some buildings as MULTISURFACE (curved edges). GEOS cannot intersect those; everything is cast to MULTIPOLYGON before clipping. Section 02 never hit this because it only intersects with the parcel's own rectangular building.
+
+### Stats for the section
+Watershed (HUC12), river basin (HUC06), FEMA zone plus subtype, and "ground drains toward", which is the dominant octant of the section 02 aspect rose (southeast on the test parcel). `downstream_huc12_name` (from `tohuc`) is only populated when the downstream HUC12 happens to be in the frame; on the test parcel it is not.
+
+### Not validated generally
+The 2,500 ft extent (still chosen for this parcel's distance to its boundary), the 1,000 ft major-reach threshold, the three-road label limit, and the Raleigh-only hydrology source. A parcel outside Raleigh has no reach layer yet. A parcel deep inside its HUC12 will show a tinted frame with no boundary, which may need a wider extent or a different device.

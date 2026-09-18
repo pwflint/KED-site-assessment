@@ -19,3 +19,6 @@
 
 # Generated client reports (contain real addresses — this repo is public)
 output/
+
+# Local county data cache (see docs/DATA_SOURCE_RESEARCH.md, "Local county data cache")
+data/

@@ -59,10 +59,13 @@ The acquisition pipeline produces a JSON object per parcel. Your input looks lik
   "topo_description": "string",
 
   "watershed_name": "string",
+  "basin_name": "Neuse — HUC06 name, rendered as '{basin_name} River basin' (added 2026-09-18)",
   "flood_zone": "Zone X",
+  "flood_zone_subtype": "AREA OF MINIMAL FLOOD HAZARD — FEMA ZONE_SUBTY; anything but the minimal-hazard subtype triggers the callout (added 2026-09-18)",
   "flood_zone_description": "string",
   "drainage_direction": "string",
-  "hydro_map_svg": "string | null",
+  "parcel_flow_map_svg": "string | null — section 02 contours with downhill flow arrows, zoom-in graphic (added 2026-09-18)",
+  "hydro_map_svg": "string | null — neighborhood subwatershed map, self-rendered vector base (2026-09-18)",
   "hydro_description": "string",
 
   "seasonal_precip": { "winter": 3.4, "spring": 3.8, "summer": 4.6, "fall": 3.1 },
@@ -278,9 +281,10 @@ Full viewport, centered. Eyebrow "Site Assessment" in accent. `client_name` as h
 ### 03 — Hydrology and drainage
 
 - Body: `hydro_description`. Include watershed name and flood zone status.
-- Viz card: `hydro_map_svg`
-- If flood zone is *not* "Zone X" or "Zone X (unshaded)": render a callout with ember-03 tint noting the flood designation
-- Caption: cite USGS WBD, local hydrology source, FEMA NFHL
+- Stat row: watershed (HUC12 name), river basin (HUC06), FEMA flood zone, ground drains toward (dominant aspect of sloping ground)
+- Zoom in, then zoom out (Peter, 2026-09-18): first card `parcel_flow_map_svg` (the section 02 contour base with flow arrows; longer = steeper), second card `hydro_map_svg` (the parcel's HUC12 tinted, boundary dashed and labeled on both sides, major reaches with flow arrows labeled "to {watershed}", roads and buildings as a quiet self-rendered base, flood polygon in ember when present)
+- If flood zone is *not* "Zone X" or "Zone X (unshaded)", or `flood_zone_subtype` is anything but the minimal-hazard subtype: render a callout with ember-03 tint noting the flood designation
+- Caption: cite USGS WBD, local hydrology source, FEMA NFHL, OpenStreetMap, NC footprints
 
 ### 04 — Climate and wind
 

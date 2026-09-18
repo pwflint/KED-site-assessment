@@ -233,7 +233,7 @@ transect_ends <- function(topo) {
 
 # ---- 1. base map -----------------------------------------------------------
 
-render_parcel_base_map_ked <- function(topo, show_transect = TRUE) {
+render_parcel_base_map_ked <- function(topo, show_transect = TRUE, label_contours = TRUE) {
   dem_df <- as.data.frame(topo$dem, xy = TRUE, na.rm = TRUE); names(dem_df)[3] <- "z"
   idx <- topo$contours[topo$contours$is_index, ]
   # One label per index contour, placed at the point of the line nearest the
@@ -260,7 +260,7 @@ render_parcel_base_map_ked <- function(topo, show_transect = TRUE) {
     geom_sf(data = idx, color = KED$ochre[6], linewidth = 0.5) +
     layer_buildings(topo) +
     layer_parcel(topo)
-  if (!is.null(label_pts) && nrow(label_pts) > 0) {
+  if (label_contours && !is.null(label_pts) && nrow(label_pts) > 0) {
     p <- p + geom_label_repel(data = label_pts, aes(x, y, label = label), family = KED_FONT,
                               size = 2.3, color = KED$ink, fill = scales::alpha(KED$surface, 0.85),
                               label.size = NA, label.padding = 0.12, segment.color = KED$ochre[5],
@@ -280,12 +280,13 @@ render_parcel_base_map_ked <- function(topo, show_transect = TRUE) {
 
 # ---- 2. slope and drainage -------------------------------------------------
 
-render_parcel_slope_drainage_ked <- function(topo, grid_spacing_ft = 10, bldg_clearance_ft = 8,
-                                             max_arrow_len_ft = 9, frame_buffer_ft = 14) {
+# Arrow field: sample the smoothed slope/aspect on a grid inside the parcel,
+# clear of the building. Circular mean via sin/cos handles the 0/360 wrap.
+# Arrow length grows with slope (min_len_ft + slope * slope_scale, capped).
+# Shared by the section 02 slope graphic and the section 03 flow graphic.
+downhill_arrows <- function(topo, grid_spacing_ft = 10, bldg_clearance_ft = 8,
+                            max_arrow_len_ft = 9, min_len_ft = 3.5, slope_scale = 0.3) {
   parcel <- topo$parcel; own <- topo$own
-  frame <- st_bbox(st_buffer(parcel, frame_buffer_ft))
-  # Arrow field: sample the smoothed slope/aspect on a grid inside the parcel,
-  # clear of the building. Circular mean via sin/cos handles the 0/360 wrap.
   aspect_rad <- topo$aspect_deg * pi / 180
   sin_a <- focal(sin(aspect_rad), w = 5, fun = "mean", na.rm = TRUE)
   cos_a <- focal(cos(aspect_rad), w = 5, fun = "mean", na.rm = TRUE)
@@ -302,10 +303,17 @@ render_parcel_slope_drainage_ked <- function(topo, grid_spacing_ft = 10, bldg_cl
   sl <- extract(slope_s, m)[, 1]; sa <- extract(sin_a, m)[, 1]; ca <- extract(cos_a, m)[, 1]
   ok <- !is.na(sl) & !is.na(sa)
   grid <- grid[ok, ]; sl <- sl[ok]; sa <- sa[ok]; ca <- ca[ok]
-  half <- pmin(max_arrow_len_ft, 3.5 + sl * 0.3) / 2
-  arrows <- data.frame(x0 = grid$x - sa * half, y0 = grid$y - ca * half,
-                       x1 = grid$x + sa * half, y1 = grid$y + ca * half,
-                       label = paste0(round(sl), "%"), slope = sl)
+  half <- pmin(max_arrow_len_ft, min_len_ft + sl * slope_scale) / 2
+  data.frame(x0 = grid$x - sa * half, y0 = grid$y - ca * half,
+             x1 = grid$x + sa * half, y1 = grid$y + ca * half,
+             label = paste0(round(sl), "%"), slope = sl)
+}
+
+render_parcel_slope_drainage_ked <- function(topo, grid_spacing_ft = 10, bldg_clearance_ft = 8,
+                                             max_arrow_len_ft = 9, frame_buffer_ft = 14) {
+  parcel <- topo$parcel
+  frame <- st_bbox(st_buffer(parcel, frame_buffer_ft))
+  arrows <- downhill_arrows(topo, grid_spacing_ft, bldg_clearance_ft, max_arrow_len_ft)
 
   cp <- topo$class_polys
   cp$fill <- slope_classes$fill[match(cp$key, slope_classes$key)]
