@@ -70,21 +70,59 @@ The acquisition pipeline produces a JSON object per parcel. Your input looks lik
 
   "seasonal_precip": { "winter": 3.4, "spring": 3.8, "summer": 4.6, "fall": 3.1 },
   "seasonal_temp": { "winter_avg": 42, "spring_avg": 58, "summer_avg": 78, "fall_avg": 62 },
-  "wind_rose_svg": "string | null",
+  "seasonal_temp_high": { "winter_high": 56, "spring_high": 64, "summer_high": 85, "fall_high": 80 },
+  "seasonal_temp_low": { "winter_low": 34, "spring_low": 39, "summer_low": 64, "fall_low": 60 },
+  "annual_precip_in": 47.9,
+  "warmest_month": "Jul", "warmest_month_high_f": 89,
+  "coldest_month": "Jan", "coldest_month_low_f": 30,
+  "wettest_month": "Sep", "driest_month": "Feb",
+  "months_avg_low_below_freezing": 2,
+  "prevailing_wind": "southwest",
+  "wind_station_name": "Raleigh Airport", "wind_station_id": "USW00013722",
+  "wind_years": "2016–2025", "wind_days": 3651,
+  "climate_chart_svg": "string | null — monthly precipitation bars over a high/low temperature band, Nov to Oct (added 2026-09-18)",
+  "wind_rose_svg": "string | null — four seasonal roses from the nearest NCEI airport station (2026-09-18)",
   "climate_description": "string",
 
   "soil_map_units": [
     {
-      "symbol": "CeB2",
-      "name": "Cecil sandy clay loam, 2 to 8 percent slopes, moderately eroded",
-      "drainage_class": "moderately well drained",
-      "k_factor": 0.32,
-      "pct_of_parcel": 58,
-      "implication": "string"
+      "symbol": "BcC",
+      "name": "Beltline-Urban land-Cecil complex, 2 to 10 percent slopes",
+      "kind": "Complex — mapunit.mukind (added 2026-09-18)",
+      "pct_of_parcel": 100,
+      "drainage_class": "Well drained — dominant condition (muaggatt.drclassdcd)",
+      "hydrologic_group": "C — dominant condition (muaggatt.hydgrpdcd)",
+      "flooding": "None",
+      "water_table_min_in": "number | null",
+      "bedrock_min_in": "number | null",
+      "available_water_in_top_40in": 4.5,
+      "components": [
+        {
+          "name": "Beltline",
+          "pct_of_unit": 40,
+          "major": true,
+          "drainage_class": "Well drained",
+          "hydrologic_group": "C",
+          "surface_texture": "Clay loam",
+          "k_factor": 0.24,
+          "surface_ksat_in_hr": 0.78,
+          "slope_range_pct": [2, 6],
+          "landform": "fills on hillslopes on piedmonts",
+          "hydric": "No",
+          "implication": "string | absent — plain-language, deferred with the rest of the prose"
+        }
+      ]
     }
   ],
-  "soil_map_svg": "string | null",
-  "soil_profile_svg": "string | null",
+  "dominant_soil": "Beltline", "dominant_soil_pct": 40,
+  "drainage_class": "Well drained",
+  "hydrologic_group": "C",
+  "available_water_in_top_40in": 4.5,
+  "soil_map_legend": [
+    { "symbol": "BcC", "name": "string", "drainage_class": "string", "acres": 528.1, "on_parcel": true }
+  ],
+  "soil_map_svg": "string | null — map units across the section 03 frame, tinted by drainage class (2026-09-18)",
+  "soil_profile_svg": "string | null — the parcel's map unit components as horizon columns to 60 in (2026-09-18)",
   "soils_description": "string",
 
   "heat_accumulation_map_svg": "string | null",
@@ -290,6 +328,7 @@ Full viewport, centered. Eyebrow "Site Assessment" in accent. `client_name` as h
 ### 04 — Climate and wind
 
 - Body: `climate_description`
+- Stat row (added 2026-09-18): precipitation in a year, average high of the warmest month, average low of the coldest month, prevailing wind
 - Four seasonal cards in a grid:
   ```
   Winter (Nov–Jan): water-02 bg, water-06 label, water-07 value
@@ -297,21 +336,22 @@ Full viewport, centered. Eyebrow "Site Assessment" in accent. `client_name` as h
   Summer (May–Jul): gold-02 bg, gold-06 label, gold-07 value
   Fall (Aug–Oct): ember-02 bg, ember-06 label, ember-07 value
   ```
-  Show `seasonal_precip` values. If `seasonal_temp` available, show temperature below precipitation.
-- If `wind_rose_svg` present: additional viz card
-- Caption: "Source: PRISM 30-year normals (1991–2020), Oregon State University."
+  Show `seasonal_precip` values (inches in an average month of the season). If `seasonal_temp` available, show temperature below precipitation; if `seasonal_temp_high`/`_low` are present, a "high / low" line follows (2026-09-18).
+- If `climate_chart_svg` present: viz card. Produced by `R/illustrate/climate_wind.R`: precipitation bars over an average high/low band, the year running November to October so each season is one contiguous block, tinted with its season family (2026-09-18).
+- If `wind_rose_svg` present: additional viz card; the caption names the station (`wind_station_name`), the years and the day count, and says the roses bin the direction of each day's strongest two-minute wind (NCEI `WDF2`), not an hourly prevailing wind.
+- Caption: "Source: PRISM 30-year normals (1991–2020), Oregon State University." and "Source: NOAA NCEI GHCN-Daily."
 
 ### 05 — Soils and infiltration
 
 - Body: `soils_description`
-- Viz card: `soil_map_svg`
-- If `soil_profile_svg` present: second viz card
-- Table from `soil_map_units`:
+- Stat row (added 2026-09-18): soil map unit symbol, largest soil in the unit with its share, drainage class, hydrologic soil group
+- Viz card: `soil_map_svg` (the section 03 frame; units tinted by dominant drainage class, labeled with their symbol). Under it the drainage legend (understory-03 → canopy-02 → gold-03 → ember-03) and `soil_map_legend` as a list: swatch, symbol, name, "(your parcel)" where `on_parcel`.
+- If `soil_profile_svg` present: second viz card, titled "The soils of map unit {symbol}, side by side"
+- Table from `soil_map_units` (rewritten 2026-09-18 for real SSURGO data, where a unit is usually a *complex* of several soils whose shares describe the whole unit, not the lot): one heading per unit on the parcel (symbol, name, % of parcel), then one row per component:
 
-  | Map unit | Drainage class | K-factor | % of parcel | Implication |
-  
-  Use the `.table` class. Plain-language implications, not raw indices.
-- Drainage legend: understory-03 → canopy-02 → gold-03 → ember-03
+  | Soil | Share | Drainage | Hydrologic group | Surface texture | K-factor | (Implication, only when any component has one) |
+
+  Use the `.table` class. A caption explains share-of-unit, hydrologic group A–D and K-factor in one sentence each; `landform` stays in the payload but out of the table (it made the table overflow and reads as jargon).
 - Caption: "Source: NRCS SSURGO via Soil Data Access."
 
 ### 06 — Microclimate

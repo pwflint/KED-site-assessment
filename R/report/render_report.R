@@ -180,37 +180,86 @@ slope_chart <- function(dist, erosion_pct) {
 }
 
 # Four seasonal cards, families rotating water -> canopy -> gold -> ember.
-season_cards <- function(precip, temp) {
+# Precipitation is the average for one month of that season; the temperature
+# line is the season's average, then its average daily high and low when the
+# payload carries them (added 2026-09-18).
+season_cards <- function(precip, temp, temp_high = NULL, temp_low = NULL) {
   if (!has(precip)) return(NULL)
   seasons <- list(
-    list(key = "winter", label = "Winter", range = "Nov – Jan", fam = "water",  tkey = "winter_avg"),
-    list(key = "spring", label = "Spring", range = "Feb – Apr", fam = "canopy", tkey = "spring_avg"),
-    list(key = "summer", label = "Summer", range = "May – Jul", fam = "gold",   tkey = "summer_avg"),
-    list(key = "fall",   label = "Fall",   range = "Aug – Oct", fam = "ember",  tkey = "fall_avg"))
+    list(key = "winter", label = "Winter", range = "Nov – Jan", fam = "water"),
+    list(key = "spring", label = "Spring", range = "Feb – Apr", fam = "canopy"),
+    list(key = "summer", label = "Summer", range = "May – Jul", fam = "gold"),
+    list(key = "fall",   label = "Fall",   range = "Aug – Oct", fam = "ember"))
   cards <- vapply(seasons, function(s) {
     pv <- precip[[s$key]]
-    tv <- if (has(temp)) temp[[s$tkey]] else NULL
-    sprintf('<div class="season-card" style="background:var(--%1$s-02)"><div class="label" style="color:var(--%1$s-06)">%2$s</div><div class="value" style="color:var(--%1$s-07)">%3$s</div><div class="sub" style="color:var(--%1$s-06)">%4$s</div>%5$s</div>',
+    tv <- if (has(temp)) temp[[paste0(s$key, "_avg")]] else NULL
+    th <- if (has(temp_high)) temp_high[[paste0(s$key, "_high")]] else NULL
+    tl <- if (has(temp_low)) temp_low[[paste0(s$key, "_low")]] else NULL
+    temp_line <- if (has(tv)) sprintf('<div class="sub" style="color:var(--%s-06)">%s°F avg</div>', s$fam, fmt(tv)) else ""
+    range_line <- if (has(th) && has(tl))
+      sprintf('<div class="sub" style="color:var(--%s-06)">high %s° / low %s°</div>', s$fam, fmt(th), fmt(tl)) else ""
+    sprintf('<div class="season-card" style="background:var(--%1$s-02)"><div class="label" style="color:var(--%1$s-06)">%2$s</div><div class="value" style="color:var(--%1$s-07)">%3$s</div><div class="sub" style="color:var(--%1$s-06)">%4$s</div>%5$s%6$s</div>',
             s$fam, s$label,
             if (has(pv)) paste0(fmt(pv, 1), "&quot;") else "n/a",
-            s$range,
-            if (has(tv)) sprintf('<div class="sub" style="color:var(--%s-06)">%s°F avg</div>', s$fam, fmt(tv)) else "")
+            s$range, temp_line, range_line)
   }, character(1))
-  paste0('<div class="viz-card scroll-reveal"><h3>Average monthly precipitation</h3><div class="season-grid">',
+  paste0('<div class="viz-card scroll-reveal"><h3>Average monthly precipitation, by season</h3><div class="season-grid">',
          paste(cards, collapse = "\n"), '</div>',
-         '<div class="viz-caption">Source: PRISM 30-year normals (1991–2020), Oregon State University.</div></div>')
+         '<div class="viz-caption">Inches of precipitation in an average month of each season, with the season\u2019s average temperature and average daily high and low. Source: PRISM 30-year normals (1991\u20132020), Oregon State University.</div></div>')
 }
 
-soil_table <- function(units) {
+# Soils, section 05 (rewritten 2026-09-18 for real SSURGO data): a map unit
+# is the survey's smallest delineation and is often a complex of two or more
+# soils whose shares describe the whole unit, not the lot. So the table lists
+# each unit on the parcel as a heading and its components as rows.
+soil_units_html <- function(units) {
   if (!has(units)) return("")
-  rows <- vapply(units, function(u) {
-    sprintf('<tr><td><span class="unit-symbol">%s</span><div class="unit-name">%s</div></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
-            esc(u$symbol %||% ""), esc(u$name %||% ""), drainage_swatch(u$drainage_class),
-            fmt(u$k_factor, 2) %||% "", if (has(u$pct_of_parcel)) paste0(fmt(u$pct_of_parcel), "%") else "",
-            esc(u$implication %||% ""))
+  blocks <- vapply(units, function(u) {
+    comps <- u$components
+    if (!has(comps)) return("")
+    show_impl <- any(vapply(comps, function(c) has(c$implication), logical(1)))
+    rows <- vapply(comps, function(c) {
+      sprintf('<tr><td><span class="unit-symbol">%s</span></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td>%s</tr>',
+              esc(c$name %||% ""),
+              if (has(c$pct_of_unit)) paste0(fmt(c$pct_of_unit), "%") else "",
+              drainage_swatch(c$drainage_class),
+              esc(c$hydrologic_group %||% ""),
+              esc(tolower(c$surface_texture %||% "")),
+              fmt(c$k_factor, 2) %||% "",
+              if (show_impl) sprintf("<td>%s</td>", esc(c$implication %||% "")) else "")
+    }, character(1))
+    heading <- sprintf('<h3 class="unit-heading"><span class="unit-symbol">%s</span> %s%s</h3>',
+                       esc(u$symbol %||% ""), esc(u$name %||% ""),
+                       if (has(u$pct_of_parcel)) sprintf(' <span class="unit-share">%s%% of the parcel</span>', fmt(u$pct_of_parcel)) else "")
+    paste0(heading,
+           '<div class="table-scroll"><table class="table soil-table"><thead><tr><th>Soil</th><th>Share</th><th>Drainage</th><th>Hydrologic group</th><th>Surface texture</th><th>K-factor</th>',
+           if (show_impl) "<th>Implication</th>" else "", '</tr></thead><tbody>',
+           paste(rows, collapse = "\n"), '</tbody></table></div>')
   }, character(1))
-  paste0('<div class="table-scroll scroll-reveal"><table class="table"><thead><tr><th>Map unit</th><th>Drainage class</th><th>K-factor</th><th>% of parcel</th><th>Implication</th></tr></thead><tbody>',
-         paste(rows, collapse = "\n"), '</tbody></table></div>')
+  paste0('<div class="soil-units scroll-reveal">', paste(blocks, collapse = "\n"),
+         '<div class="viz-caption">Share of unit is how much of the map unit each soil makes up across its whole extent; the survey does not locate them within a lot. Hydrologic group runs A (water soaks in fastest) to D (slowest). K-factor is the surface soil\u2019s erodibility, from about 0.02 to 0.69; higher erodes more easily. Source: NRCS SSURGO via Soil Data Access.</div></div>')
+}
+
+# Every map unit in the soil map\u2019s frame, largest first, with the drainage
+# color it was drawn in
+soil_map_legend <- function(legend) {
+  if (!has(legend)) return("")
+  items <- vapply(legend, function(l) {
+    sprintf('<li>%s<span><span class="unit-symbol">%s</span> <span class="unit-name">%s</span>%s</span></li>',
+            drainage_swatch_only(l$drainage_class), esc(l$symbol %||% ""), esc(l$name %||% ""),
+            if (isTRUE(l$on_parcel)) ' <span class="unit-share">(your parcel)</span>' else "")
+  }, character(1))
+  sprintf('<ul class="unit-list">%s</ul>', paste(items, collapse = "\n"))
+}
+
+drainage_swatch_only <- function(drainage_class) {
+  d <- tolower(drainage_class %||% "")
+  tok <- if (grepl("moderately well", d)) "canopy-02"
+         else if (grepl("somewhat poor", d)) "gold-03"
+         else if (grepl("poor", d)) "ember-03"
+         else if (grepl("well|excessive", d)) "understory-03"
+         else "material-warm-02"
+  sprintf('<span class="legend-swatch" style="background:var(--%s)"></span>', tok)
 }
 
 source_list <- function(srcs) {
@@ -308,22 +357,50 @@ sec_hydrology <- function(p) {
                      esc(p$watershed_name %||% "parcel's"))))
 }
 
+month_long <- function(abb) {
+  if (!has(abb)) return(NULL)
+  i <- match(abb, month.abb)
+  if (is.na(i)) abb else month.name[i]
+}
+
 sec_climate <- function(p) {
-  seasons <- season_cards(p$seasonal_precip, p$seasonal_temp)
-  section("climate", "04 — Climate and wind", "Seasonal rhythms",
+  seasons <- season_cards(p$seasonal_precip, p$seasonal_temp, p$seasonal_temp_high, p$seasonal_temp_low)
+  warm <- if (has(p$warmest_month_high_f)) sprintf("%s\u00b0F, %s", fmt(p$warmest_month_high_f), month_long(p$warmest_month)) else NULL
+  cold <- if (has(p$coldest_month_low_f)) sprintf("%s\u00b0F, %s", fmt(p$coldest_month_low_f), month_long(p$coldest_month)) else NULL
+  wind_cap <- sprintf("How often each day\u2019s strongest two-minute wind came from each of eight directions, by season, with the season\u2019s average wind speed. %s%s Source: NOAA NCEI Global Historical Climatology Network daily summaries.",
+                      if (has(p$wind_station_name)) sprintf("Observed at %s, the nearest full weather station. ", esc(p$wind_station_name)) else "",
+                      if (has(p$wind_years)) sprintf("Years %s, %s days with a recorded direction.", esc(p$wind_years), fmt(p$wind_days)) else "")
+  section("climate", "04 \u2014 Climate and wind", "Seasonal rhythms",
     paras(p$climate_description, "lede"),
-    seasons %||% viz_card(NULL, "water", "Source: PRISM 30-year normals (1991–2020), Oregon State University."),
-    viz_card(p$wind_rose_svg, "water", "Seasonal wind rose. Source: NOAA NCEI station normals.", required = FALSE))
+    stat_row(stat(fmt(p$annual_precip_in, 1, " in"), "Precipitation in a year"),
+             stat(warm, "Average high, warmest month"),
+             stat(cold, "Average low, coldest month"),
+             stat(if (has(p$prevailing_wind)) tools::toTitleCase(p$prevailing_wind) else NULL, "Prevailing wind")),
+    seasons %||% viz_card(NULL, "water", "Source: PRISM 30-year normals (1991\u20132020), Oregon State University."),
+    viz_card(p$climate_chart_svg, "water",
+             "Month by month: average precipitation above, average daily high and low temperature below, the dashed line between them the daily mean. The year runs November to October so each season is one block. Source: PRISM 30-year normals (1991\u20132020), Oregon State University, 4 km grid cell containing the parcel.",
+             required = FALSE),
+    viz_card(p$wind_rose_svg, "water", wind_cap, required = FALSE))
 }
 
 sec_soils <- function(p) {
-  section("soils", "05 — Soils and infiltration", "What lies beneath",
+  units <- p$soil_map_units
+  u1 <- if (has(units)) units[[1]] else NULL
+  largest <- if (has(p$dominant_soil)) sprintf("%s, %s%%", p$dominant_soil, fmt(p$dominant_soil_pct)) else NULL
+  section("soils", "05 \u2014 Soils and infiltration", "What lies beneath",
     paras(p$soils_description, "lede"),
-    viz_card(p$soil_map_svg, "ochre", "Source: NRCS SSURGO via Soil Data Access."),
-    viz_card(p$soil_profile_svg, "ochre", "Soil profile for the dominant map unit. Source: NRCS SSURGO via Soil Data Access.",
+    stat_row(stat(u1$symbol, "Soil map unit"),
+             stat(largest, "Largest soil in the unit"),
+             stat(p$drainage_class, "Drainage class"),
+             stat(p$hydrologic_group, "Hydrologic soil group")),
+    viz_card(p$soil_map_svg, "ochre",
+             "Soil map units across the same frame as the watershed map in section 03, each tinted by the drainage class of its dominant soil, labeled with its map unit symbol. Blue lines are mapped stream reaches; the floodplain soils follow them. Source: NRCS SSURGO via Soil Data Access; roads from OpenStreetMap; City of Raleigh Hydrology.",
+             extra = paste0(if (has(p$soil_map_legend)) drainage_legend else "", soil_map_legend(p$soil_map_legend))),
+    viz_card(p$soil_profile_svg, "ochre",
+             title = if (has(u1$symbol)) sprintf("The soils of map unit %s, side by side", u1$symbol) else "Soil profiles",
+             caption = "Each column is one soil in the map unit, its width the soil\u2019s share of the unit, drawn to 60 in. Bands are horizons, darker with more clay, labeled with the horizon name and texture. \u201cFill\u201d marks material moved by people, in the survey\u2019s own notation. The dashed line marks the first horizon where water moves slowly (under 1 micrometer per second, about 0.14 in per hour). Source: NRCS SSURGO representative values via Soil Data Access.",
              required = FALSE),
-    soil_table(p$soil_map_units),
-    if (has(p$soil_map_units)) drainage_legend else "")
+    soil_units_html(units))
 }
 
 sec_microclimate <- function(p) {
@@ -465,6 +542,15 @@ REPORT_CSS <- "/* ── Report layout (on top of the design system) ── */
 .viz-pair .viz-card { margin-top: 0; }
 .viz-card h3 { font-size: 1rem; margin-bottom: var(--space-3); }
 .drainage-legend { margin-top: var(--space-4); }
+.unit-list { list-style: none; padding: 0; margin: var(--space-3) 0 0; font-size: var(--size-small); }
+.unit-list li { display: flex; align-items: baseline; gap: var(--space-2); padding: 3px 0; }
+.unit-list .legend-swatch { flex-shrink: 0; position: relative; top: 2px; }
+.unit-list .unit-name { font-size: var(--size-small); }
+.unit-share { color: var(--caption); font-weight: var(--weight-body); font-size: var(--size-caption); font-family: var(--font-body); }
+.soil-units { margin-top: var(--space-5); }
+.unit-heading { font-size: 1rem; margin-top: var(--space-5); margin-bottom: 0; }
+.soil-units .table-scroll { margin-top: var(--space-3); }
+.soil-table th:nth-child(1), .soil-table td:nth-child(1), .soil-table th:nth-child(6), .soil-table td:nth-child(6) { white-space: nowrap; }
 .callout { background: var(--ember-02); color: var(--ember-07); border-radius: var(--radius-media); padding: var(--space-4) var(--space-5); margin: 0 0 var(--space-4); max-width: 560px; }
 .callout-eyebrow { color: var(--ember-06); }
 .callout p { margin: 0; }

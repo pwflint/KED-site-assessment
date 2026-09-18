@@ -13,7 +13,10 @@ library(sf)
 # this downloads/caches the whole county file once, same pattern as PRISM's
 # CONUS-wide grids: expensive per-county the first time, free after.
 BUILDING_FOOTPRINTS_CATALOG_URL <- "https://sdd.nc.gov/staticdownloads/listbuildingfootprints/2020-2022"
-BUILDING_FOOTPRINTS_CACHE_DIR <- Sys.getenv("BUILDING_FOOTPRINTS_CACHE_DIR", file.path(tempdir(), "nc_building_footprints"))
+# Default moved from tempdir() to the gitignored data/ directory (2026-09-18)
+# so the county file is downloaded once, not once per session.
+BUILDING_FOOTPRINTS_CACHE_DIR <- Sys.getenv("BUILDING_FOOTPRINTS_CACHE_DIR",
+                                            file.path(Sys.getenv("KED_DATA_DIR", "data"), "nc_building_footprints"))
 
 DEFAULT_BUILDING_HEIGHT_FT <- 30
 DEFAULT_CANOPY_HEIGHT_FT <- 55  # midpoint of the 50-60ft range; must stay > building height

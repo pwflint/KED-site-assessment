@@ -1,7 +1,7 @@
 ---
 author: peter
 created: '2026-07-28'
-modified: '2026-09-17'
+modified: '2026-09-18'
 status: development
 tags:
   - domain/gis
@@ -29,7 +29,9 @@ This document tracks design decisions, judgment calls, and rejected approaches f
 - [x] Parcel-scale illustration, two graphics — prototypes settled, `R/illustrate/parcel_base_map.R`, `parcel_slope_drainage.R`, `parcel_building_mask.R`
 - [x] Section 02 client-facing set (base map, slope/drainage, ground profile, aspect rose) styled to the design system — first pass 2026-09-17, `R/illustrate/parcel_topography.R`; see the section near the end of this document
 - [x] Section 03 client-facing set (parcel flow arrows, self-rendered neighborhood subwatershed map) — first pass 2026-09-18, `R/illustrate/parcel_hydrology.R`
-- [x] Section 01 client-facing set (regional inset, neighborhood orientation map) — first pass 2026-09-18, `R/illustrate/regional_orientation.R`; see the last section
+- [x] Section 01 client-facing set (regional inset, neighborhood orientation map) — first pass 2026-09-18, `R/illustrate/regional_orientation.R`
+- [x] Section 04 client-facing set (monthly climate chart, seasonal wind roses) — first pass 2026-09-18, `R/illustrate/climate_wind.R`
+- [x] Section 05 client-facing set (neighborhood soil map, map unit soil profiles) — first pass 2026-09-18, `R/illustrate/parcel_soils.R`; see the last two sections
 - [ ] Prose for any of the above — explicitly deferred by Peter until the writing approach itself is validated; do not draft unprompted
 
 ---
@@ -236,4 +238,61 @@ The 900 ft orientation radius and the 250 ft minimum street run are tuned on a d
 4. **Neighborhood orientation map:** a good base map, but it tells the client nothing they do not already know. Make it carry two things the watershed-scale map cannot: **local drainage lines** (the small reaches and ditches, the path water actually takes off the block) and **canopy cover**. Both feed the opportunities and vulnerabilities in section 07, which is the point of putting them here. Open questions to work through: how to extrapolate broken drainage paths that the source data leaves as fragments so the lines read continuously (a judgment call to document, not silent gap-filling), and where parcel-scale canopy comes from, since NLCD is too coarse (the July finding) and this parcel has no canopy data yet. Candidates recorded, not built.
 5. **All sections, stat row (applied 2026-09-18, not held):** the stat values were rendering at h2 size and read as peers of the section title; now h3 (`.stat-value`), and the label sits above the value so "Ground drains toward / Southeast" reads in order. Done in `R/report/render_report.R` (label-first markup, plus a CSS override on the vendored design system's `.stat-value`, which still says h2 in the design project; sync that change back to the design system when convenient).
 
-**Handoff note:** Peter intends to work the remaining sections (04 climate, 05 soils, 06 microclimate, 07 synthesis, 08 sources) with a different agent, and to run the three held revision passes (sections 01, 02, 03) separately. Everything a new agent needs is in `project_config.md` (Key Files), `docs/BUILD_AGENT_PROMPT.md` (payload contract with the 2026-09-17/18 additions), this document (per-section build notes and review notes), `docs/DATA_SOURCE_RESEARCH.md` (sources, the county cache decision), and `workflow_state.md` (next_action).
+**Handoff note (2026-09-18, earlier session):** Peter intends to work the remaining sections with a different agent, and to run the held revision passes (sections 01, 02, 03) separately. Sections 04 and 05 were built later the same day by that second agent (below); the revision passes are still held, by Peter's call, until the prototype is complete so any global edits can be made in one pass.
+
+---
+
+## Section 04, client-facing set (`R/illustrate/climate_wind.R`)
+
+**Job:** the thirty-year baseline the landscape operates within, and the wind. Built 2026-09-18 on the test parcel from the two acquisition sources validated in July (`R/acquisition/climate.R`, `R/acquisition/wind.R`). First pass, not validated on a second site. No prose.
+
+### The graphics
+1. **Seasonal cards** (HTML, the design system's own component): inches in an average month of each season, the season's mean temperature, and now its average daily high and low. Same four-family rotation the design system prescribes (water, canopy, gold, ember).
+2. **Climate chart**: two stacked panels, precipitation bars (water-03) above, the average daily high/low band (gold-03) with the mean dashed below. **The year runs November to October**, not January to December, so each of the PRD's seasons (Nov–Jan, Feb–Apr, May–Jul, Aug–Oct) is one contiguous block, tinted with its season family at low alpha and labeled. Annotations use the "name the threshold" device from section 02: wettest and driest month, the warmest month's high, the coldest month's low, and the 32°F freezing line. Two months (Jan, Feb) have an average low below freezing on the test parcel.
+3. **Wind roses**, four seasons in a 2×2, each in its season family: how often the day's strongest two-minute wind (NCEI `WDF2`) came from each of eight directions, over ten complete calendar years at Raleigh airport, with the season's average speed in the facet title. Southwest dominates spring and summer (42%, 39%), the northeast takes over in fall (30%), which matches known Piedmont climatology (the July note).
+
+### Stats for the section
+Precipitation in a year (47.9 in, matching the July validation figure exactly), the warmest month's average high, the coldest month's average low, the prevailing wind over the whole record. The seasonal values in the cards are means of the three monthly normals per season, so they equal the July test values converted to inches and °F.
+
+### Decisions worth Peter's eye
+- **Nov→Oct axis.** Unconventional, chosen so the seasons read as blocks and match the card order. If it confuses readers, the cost of a Jan→Dec axis is that winter splits across both ends.
+- **Whole calendar years, not a rolling window** (`get_wind_data()` changed 2026-09-18). Every season gets the same number of days, and the window is stable enough to cache. Previously the window ended yesterday and the summer count drifted through the year.
+- **The roses bin the strongest wind of each day, not hourly observations.** GHCN-Daily has no hourly direction; the caption says exactly what is binned. A true prevailing-wind rose would need ISD hourly data, a different source.
+- **Dark mode lesson, again.** First render put season labels, the "avg high / avg low" end labels and the wettest/driest text in family-06 steps, all invisible on the dark surface, and tinted the season bands with the near-neutral 01 steps, which read as grey slabs. Text on the surface or in a label box now uses the theme-swapped ink/muted; bands use the hued 02 step at 0.3 alpha. This is the same finding recorded for section 02 on 2026-09-17; it is worth making a rule in the design system: family steps are for marks and for text *on those marks*, never for text on the surface.
+- `patchwork` 1.1 fails against ggplot2 3.5's guide layout on this machine; the two panels are stacked with `cowplot::plot_grid` instead.
+
+### Not validated generally
+The freezing line only means something where winter lows approach 32°F; a coastal parcel may need a different threshold annotation (or none). The rose scale (0–40%) is fixed by the strongest season; a site with a flatter distribution will show small roses. The nearest `USW` station can be 30+ miles from a rural parcel; the caption names it so the distance is visible, but the report does not yet say how far.
+
+---
+
+## Section 05, client-facing set (`R/illustrate/parcel_soils.R`, additions to `R/acquisition/soil.R`)
+
+**Job:** what lies beneath, as the survey actually describes it. Built 2026-09-18 on the test parcel. First pass, not validated on a second site. No prose; the `implication` column the payload contract sketched stays absent until the writing approach is settled.
+
+### What SSURGO can say at parcel scale, and what this section does about it
+The test parcel sits entirely inside one map unit, **BcC, Beltline-Urban land-Cecil complex, 2 to 10 percent slopes**. A *complex* names soils that occur together in a pattern too fine to map at 1:24,000: Beltline 40%, Urban land 35%, Cecil 20%, Chavis 5%. Those shares describe the whole unit across the county, and the survey does not locate them within a lot. So the section is built around that honesty: the stat row names the unit and its largest soil *with its share*; the table is one heading per unit with a row per component and a "share of unit" column; the caption says the survey does not place them. Rendering a single "your soil is Cecil" answer would be false precision of exactly the kind the building mask exists to avoid.
+
+### The graphics
+1. **Soil map**, the section 03 frame (2,500 ft radius), map units tinted by the drainage class of their dominant soil on the design system's own gradient (understory-03 well, canopy-02 moderately well, gold-03 somewhat poor, ember-03 poor; excessively drained shares the well-drained step), outlined ochre-05, labeled with the symbol in a label box; roads and the Raleigh reaches as a quiet base; the parcel as a bloom marker with "Your parcel". Buildings were tried and dropped: at 0.45 alpha they barely showed and cost ~540 KB of SVG. Nine units in frame; the frame is 92% BcC, so the map is mostly one tint with the rocky Wake-Rolesville slopes, the Helena unit and the Chewacla-Wehadkee floodplain (somewhat poorly drained, frequently flooded) along Walnut Creek as the differences. That is the true picture and it is why the frame is 2,500 ft, not 900: at 900 ft the map is one polygon.
+2. **Soil profiles**: the components of the parcel's map unit side by side as horizon columns to 60 in, **column width proportional to the component's share**, horizon fill by clay content (ochre-02 sandy to ochre-05 clay), horizon name and representative texture in each band that is tall enough, Urban land as a plain block "not mapped as soil". Two annotations: a bracket beside the human-transported fill horizons (SSURGO's `^` prefix; the "^" is stripped from the label and the bracket says "fill"), and a dashed line at the first horizon whose saturated hydraulic conductivity falls below 1 µm/s, labeled "water moves slowly below N in". On the test parcel that is 19 in for Beltline (a buried clay subsoil under 19 in of fill) and 31 in for Cecil.
+
+### Real findings, not just style
+- **SDA answers a query with no matching rows with a bare `{}`.** `sda_query()` treated that as a failure; it is a real answer (no restrictive layer, no wet-month water table). Now returns an empty frame; `sda_frame()` re-attaches the column names SDA drops with the rows.
+- **Cecil carries hydrologic group D inside this urban complex** while the standalone Cecil unit next door (CeB) is group A and the unit's dominant condition is C. Presented as the source gives it; flagged here because a reader who knows Cecil as a B soil will notice. Not investigated.
+- **Units are cm and µm/s.** Horizon depths are converted to inches for display; ksat to in/hr in the payload (`surface_ksat_in_hr`). The slow-water threshold of 1 µm/s is the NRCS boundary between "moderately low" and "moderately high" classes.
+- **The neighborhood polygons come through the county cache** (`ssurgo_mupolygon`, with the extent hash), the tabular queries stay live. SSURGO polygons change on the survey's schedule, years, so the 180-day default is conservative.
+
+### Decisions worth Peter's eye
+- Drainage class as the map's fill encoding (the design system's gradient) rather than unit identity. With BcC covering the frame, the map is one green sheet with small exceptions; that reads as "your whole neighborhood drains well except the creek bottom", which is the point, but it is a saturated green and the legend must sit right under it.
+- The stat "Largest soil in the unit: Beltline, 40%" rather than "Soil: Beltline". The share is load-bearing.
+- The profile shows the survey's representative values (`_r`), not ranges. A low/high band per horizon exists in SSURGO and could be a later refinement.
+- The `landform` field ("fills on hillslopes on piedmonts") is in the payload but not in the table; it overflowed the table and reads as jargon. It is exactly the kind of thing prose would translate.
+
+### Not validated generally
+A parcel that straddles two units gets two headings and a `pct_of_parcel` split; untested. A consociation (one named soil at 85%+) will produce one wide column and the profile will look empty on the right; the width rule may want a floor. Units with `Urban land` at 100% have no horizons at all. The 60 in cut-off truncates the deep Bt horizons (Cecil's go to 79 in); the caption says so.
+
+---
+
+## Caches moved out of tempdir (2026-09-18)
+`PRISM_CACHE_DIR`, `GHCND_STATIONS_CACHE_DIR` and `BUILDING_FOOTPRINTS_CACHE_DIR` defaulted to R's per-session `tempdir()`, so every new session re-downloaded 134 MB of PRISM grids, the 11 MB station list and the 69 MB county footprint file; the handoff note warned about the last one. All three now default under `data/` (gitignored, `KED_DATA_DIR` moves it), beside the county cache. The daily wind record is cached there too, keyed by station and window.

@@ -22,7 +22,7 @@ This document tracks research tasks for data sources, API endpoints, data availa
 - [x] Wind (NOAA) ✅ 2026-07-24
 - [x] Watershed (HUC 06/12) ✅ 2026-07-24 — source located and retrievable; extent logic deferred to visualization stage
 - [x] Ecoregions (EPA Level III) ✅ 2026-07-24 — source located and retrievable; extent logic deferred to visualization stage
-- [x] Soils (SSURGO properties) ✅ 2026-07-24 — validated via SDA + UC Davis SoilWeb, see Soils section (checklist item missed being marked when this was originally done)
+- [x] Soils (SSURGO properties) ✅ 2026-07-24 — validated via SDA + UC Davis SoilWeb; properties, horizons and polygons added 2026-09-18, see Soils section
 - [x] Flood Zones (FEMA) ✅ 2026-07-24
 - [x] OpenStreetMap (base maps) ✅ 2026-07-24 — source located and retrievable; extent logic deferred to visualization stage
 - [x] Building Footprints (new, not in original PRD) ✅ 2026-07-24 — 2D geometry only, placeholder height; see Canopy Height section
@@ -160,7 +160,7 @@ https://data.prism.oregonstate.edu/normals/us/4km/{element}/monthly/prism_{eleme
 - `{month}`: two-digit `01`–`12`
 - Each zip contains a GeoTIFF (~2.8MB) plus `.stn.csv` (station list used) and `.info.txt` (metadata) — loads directly into `terra`
 
-**Caching matters for production economics.** These are CONUS-wide grids, not parcel-clippable via the distribution service — every parcel in the same state hits the same file. Cache each element/month grid once (~2.8MB × 4 elements × 12 months ≈ 134MB total) and reuse across every future site; this is a one-time infrastructure cost, not a per-assessment cost, which matters for the $200–250 price point in `WORKFLOW_SPEC.md`.
+**Caching matters for production economics.** These are CONUS-wide grids, not parcel-clippable via the distribution service — every parcel in the same state hits the same file. Cache each element/month grid once (~2.8MB × 4 elements × 12 months ≈ 134MB total) and reuse across every future site; this is a one-time infrastructure cost, not a per-assessment cost, which matters for the $200–250 price point in `WORKFLOW_SPEC.md`. *2026-09-18:* the cache default moved from `tempdir()` (lost every session) to `data/prism`; with it warm, all 48 point extractions take 0.6 s. Re-extracted values match the July table below exactly.
 
 **Test case (7 Hill St, Raleigh, Wake County) — seasonal normals, Winter/Spring/Summer/Fall per the PRD's Nov-Jan/Feb-Apr/May-Jul/Aug-Oct grouping:**
 
@@ -217,6 +217,8 @@ Sanity-checked: tmax > tmin every month, summer > winter, annual precipitation t
 **Station selection needs a real filter, not just "nearest."** GHCND's station list (`https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt`, ~132K stations, fixed-width format) includes CoCoRaHS volunteer rain-gauge stations (`US1` prefix) that are often geographically closer to a given parcel than any real weather station, but **only measure precipitation, never wind.** Naively picking the nearest US-prefixed station picked one of these first and returned an empty wind column. Restricting to `USW` (Weather-Bureau-Army-Navy — airport/NWS sites with full instrumentation) fixes it. `USC` (COOP) stations have inconsistent wind reporting and are also worth avoiding for this purpose.
 
 **Test case (7 Hill St, Wake County):** nearest `USW` station is `USW00013722`, Raleigh-Durham International Airport — confirmed by name in the API response, not assumed. 10 years of daily data (2016-07-25 to 2026-07-21), 3,649 records, only 3 missing direction values.
+
+**2026-09-18 change:** `get_wind_data()` now requests the last ten *complete calendar years* (2016-01-01 to 2025-12-31 today; 3,653 records, 2 missing directions) instead of a rolling window ending yesterday, so every season has the same number of days and the window is stable enough to cache. Daily records are cached as one CSV per station and window under `GHCND_STATIONS_CACHE_DIR` (default now `data/ghcnd`). Same station, same seasonal picture (SW dominant in spring/summer at 42%/39%, NE in fall at 30%). Note for the caption: `WDF2` is the direction of the day's fastest two-minute wind, so the roses show where the strongest wind of each day came from, not an hourly prevailing wind; a true prevailing-wind rose needs ISD hourly data.
 
 **Seasonal wind rose (8-point compass, % of days from each direction, mean speed m/s):**
 
@@ -366,13 +368,29 @@ While prototyping the neighborhood-scale main image, Peter raised that HUC-deriv
 - Properties needed: infiltration rates, run-off coefficients, water balance (if available)
 
 ### Status
-**Current**: SSURGO spatial data acquired, properties not extracted
+**Current**: map units, components, horizons, aggregates and polygons all retrieved from Soil Data Access with plain SQL, no `soilDB`/`FedData` dependency (2026-09-18, see below)
 **Target**: Table with soil series/types and properties (infiltration rates, run-off coefficients)
 **Action Items**:
-- [ ] Research available SSURGO properties
-- [ ] Test property extraction using `soilDB`
-- [ ] Document which properties are available
-- [ ] Implement property extraction function
+- [x] Research available SSURGO properties ✅ 2026-09-18
+- [x] Test property extraction ✅ 2026-09-18 — direct SDA SQL, not `soilDB`
+- [x] Document which properties are available ✅ 2026-09-18
+- [x] Implement property extraction function ✅ 2026-09-18 — `get_mapunit_aggregates()`, `get_mapunit_components()`, `get_component_horizons()`, `get_component_restrictions()`, `get_soil_polygons()` in `R/acquisition/soil.R`
+
+### 2026-09-18 findings — properties and geometry for section 05, all through SDA SQL
+
+**Geometry.** `mupolygon.mupolygongeo.STAsText()` filtered by `SDA_Get_Mupolygonkey_from_intersection_with_WktWgs84('<frame WKT>')` returns the map unit polygons that touch an extent as WKT, ~13 polygons and 0.3 s for the 2,500 ft section 03 frame in Wake County. Read with `st_as_sf(wkt = ...)`. Cached per county + extent through `local_cache.R` (`ssurgo_mupolygon`).
+
+**Properties, and where they live.** The parcel's own map unit came back as a *complex* (`mukind`), which shaped the whole section (see `ILLUSTRATION_NOTES.md`):
+- `muaggatt` (per map unit, dominant-condition aggregates): `drclassdcd`, `hydgrpdcd`, `flodfreqdcd`, `wtdepannmin`, `brockdepmin`, `aws0100wta` (available water storage 0–100 cm, cm), `slopegraddcp`.
+- `component`: `comppct_r`, `majcompflag`, `drainagecl`, `hydgrp`, `runoff` (NULL on every component checked), `slope_l/_r/_h`, `hydricrating`, taxonomy, `geomdesc` (landform, e.g. "fills on hillslopes on piedmonts").
+- `chorizon`: `hzdept_r/hzdepb_r` (cm), `sandtotal_r/silttotal_r/claytotal_r`, `om_r`, `ksat_r` (µm/s), `awc_r` (cm/cm), `kffact`/`kwfact` (text, e.g. ".24"), `ph1to1h2o_r`, `dbthirdbar_r`; representative texture from `chtexturegrp` where `rvindicator = 'Yes'`.
+- `corestrictions`: none for any component on the test parcel; `cosoilmoist` wet months: none.
+
+**Infiltration and runoff, the PRD's two asks.** There is no "infiltration rate" field. The closest published values are `ksat_r` per horizon (saturated hydraulic conductivity; the surface horizon's value is the infiltration proxy, converted to in/hr as `surface_ksat_in_hr`) and the hydrologic soil group (`hydgrp`, A–D, the runoff-potential class the curve-number method uses). `component.runoff` is empty here. Run-off coefficients would be derived (curve number from `hydgrp` + land cover), a translate/analysis step, not retrieval.
+
+**Two gotchas caught.** (1) SDA answers a query with no rows with a bare `{}`, not an empty `Table`; `sda_query()` used to throw on that and now returns an empty frame. (2) SDA drops the column header when there are no rows, so `sda_frame()` re-attaches the requested names. Plus one thing to know: Cecil carries `hydgrp = 'D'` as a component of the urban complex BcC while the standalone Cecil unit CeB nearby is group A. Presented as the source gives it.
+
+**Test case (7 Hill St):** 100% in BcC, Beltline-Urban land-Cecil complex, 2 to 10 percent slopes (Beltline 40 / Urban land 35 / Cecil 20 / Chavis 5). Beltline is 19 in of clay-loam fill over a buried Cecil-like Bt (ksat 0.55 µm/s); Cecil's slow horizon starts at 31 in (Bt3, 0.055 µm/s). Sanity check against known facts: Cecil/Kanhapludults on Piedmont interfluves, Chewacla-Wehadkee on the Walnut Creek floodplain, Wake-Rolesville on the rocky slopes: all where they should be.
 
 ---
 

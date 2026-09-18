@@ -10,10 +10,11 @@ library(httr)
 NCEI_STATIONS_URL <- "https://www.ncei.noaa.gov/pub/data/ghcn/daily/ghcnd-stations.txt"
 NCEI_DATA_URL <- "https://www.ncei.noaa.gov/access/services/data/v1"
 
-GHCND_STATIONS_CACHE_DIR <- Sys.getenv("GHCND_STATIONS_CACHE_DIR", file.path(tempdir(), "ghcnd_cache"))
-
-# NOTE: tempdir() is per-R-session, not persistent across script runs - callers
-# who want real cross-run caching should set GHCND_STATIONS_CACHE_DIR to a stable path.
+# Default moved from tempdir() to the gitignored data/ directory (2026-09-18):
+# the per-session temp dir meant every new session re-fetched the station
+# list and ten years of daily records. KED_DATA_DIR or GHCND_STATIONS_CACHE_DIR override.
+GHCND_STATIONS_CACHE_DIR <- Sys.getenv("GHCND_STATIONS_CACHE_DIR",
+                                       file.path(Sys.getenv("KED_DATA_DIR", "data"), "ghcnd"))
 get_ghcnd_stations <- function(cache_path = file.path(GHCND_STATIONS_CACHE_DIR, "ghcnd-stations.txt")) {
   dir.create(dirname(cache_path), showWarnings = FALSE, recursive = TRUE)
   if (!file.exists(cache_path)) download.file(NCEI_STATIONS_URL, cache_path, quiet = TRUE)
@@ -48,7 +49,14 @@ season_of_month <- function(m) {
   ifelse(m %in% c(5, 6, 7), "summer", "fall")))
 }
 
-get_daily_wind <- function(station_id, start_date, end_date) {
+# Daily records are cached per station and date window (one CSV each) in
+# GHCND_STATIONS_CACHE_DIR; a closed window of whole years never changes.
+get_daily_wind <- function(station_id, start_date, end_date, cache_dir = GHCND_STATIONS_CACHE_DIR) {
+  cache_path <- file.path(cache_dir, sprintf("daily_%s_%s_%s.csv", station_id, start_date, end_date))
+  if (file.exists(cache_path)) {
+    parsed <- read.csv(cache_path, stringsAsFactors = FALSE, colClasses = c(DATE = "character"))
+    return(parsed)
+  }
   resp <- GET(NCEI_DATA_URL, query = list(
     dataset = "daily-summaries",
     stations = station_id,
@@ -66,6 +74,8 @@ get_daily_wind <- function(station_id, start_date, end_date) {
   parsed$WDF2 <- as.numeric(parsed$WDF2)
   parsed$month <- as.integer(substr(parsed$DATE, 6, 7))
   parsed$season <- season_of_month(parsed$month)
+  dir.create(cache_dir, showWarnings = FALSE, recursive = TRUE)
+  write.csv(parsed, cache_path, row.names = FALSE)
   parsed
 }
 
@@ -97,12 +107,16 @@ seasonal_wind_rose <- function(daily_wind) {
 }
 
 # --- orchestrator ---
+# The window is the last N complete calendar years (2026-09-18; was a rolling
+# window ending yesterday). Whole years give every season the same number of
+# observations, and a closed window is cacheable.
 get_wind_data <- function(parcel_sf, years_of_history = 10) {
-  centroid <- st_transform(st_centroid(parcel_sf), 4326) |> st_coordinates()
+  centroid <- st_transform(st_centroid(st_geometry(parcel_sf)), 4326) |> st_coordinates()
   station <- nearest_station(centroid[1, "X"], centroid[1, "Y"])
 
-  end_date <- Sys.Date() - 1
-  start_date <- end_date - years_of_history * 365
+  last_year <- as.integer(format(Sys.Date(), "%Y")) - 1
+  start_date <- as.Date(sprintf("%d-01-01", last_year - years_of_history + 1))
+  end_date <- as.Date(sprintf("%d-12-31", last_year))
 
   daily <- get_daily_wind(station$id, format(start_date), format(end_date))
   rose <- seasonal_wind_rose(daily)

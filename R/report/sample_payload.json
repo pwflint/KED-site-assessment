@@ -1,12 +1,13 @@
 {
-  "_note": "FICTIONAL sample payload for layout review only. No real client, address, or parcel. Numbers follow the example values in docs/BUILD_AGENT_PROMPT.md; prose reuses the design template's default copy. Visualization fields are null except one small inline SVG, so the renderer's placeholder, omission, and inline-SVG paths are all exercised.",
-
+  "_note": "FICTIONAL sample payload for layout review only. No real client, address, or parcel. Numbers follow the example values in docs/BUILD_AGENT_PROMPT.md; prose reuses the design template's default copy. Visualization fields are null except one small inline SVG, so the renderer's placeholder, omission, and inline-SVG paths are all exercised. Sections 04 and 05 fields follow the 2026-09-18 payload additions (seasonal highs/lows, wind station, map unit components, map legend).",
   "client_name": "Sample Client",
   "address": "1 Example Street, Raleigh, NC 27601",
-  "coordinates": { "lat": 35.78, "lon": -78.64 },
+  "coordinates": {
+    "lat": 35.78,
+    "lon": -78.64
+  },
   "assessment_date": "2026-09-17",
   "practitioner": "Peter W Flint",
-
   "ecoregion_l3": "Piedmont",
   "ecoregion_l4": "Northern Outer Piedmont",
   "ecoregion_description": "This property sits within the Northern Outer Piedmont ecoregion — a transitional zone between the hard-rock uplands and the Coastal Plain, shaped by moderate rainfall and deep, weathered soils.",
@@ -14,7 +15,6 @@
   "huc12_name": "Walnut Creek",
   "regional_map_svg": "<svg viewBox=\"0 0 500 300\" xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"Sample regional inset\"><rect width=\"500\" height=\"300\" fill=\"#e6e9e2\"/><path d=\"M60 40 L440 70 L420 250 L80 230 Z\" fill=\"#c7d3bb\"/><path d=\"M90 220 C 180 150, 260 200, 330 120 S 420 60, 440 50\" fill=\"none\" stroke=\"#5b87ae\" stroke-width=\"3\"/><circle cx=\"250\" cy=\"165\" r=\"6\" fill=\"#e0913a\"/><text x=\"250\" y=\"290\" text-anchor=\"middle\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#4d5f3a\">Sample inline SVG — not a real map</text></svg>",
   "neighborhood_map_svg": null,
-
   "elevation_change_ft": 12,
   "max_slope_pct": 18,
   "parcel_area_acres": 0.14,
@@ -28,46 +28,139 @@
   "contour_map_svg": null,
   "slope_drainage_map_svg": null,
   "topo_description": "Topography determines where water moves, where soil erodes, and where microclimates form. Even subtle grade changes on a small parcel shape what can grow and what drains.",
-
   "watershed_name": "Walnut Creek",
   "flood_zone": "Zone X",
   "flood_zone_description": "Zone X is FEMA's designation for areas of minimal flood hazard, outside the 0.2% annual chance floodplain.",
   "drainage_direction": "Southeast",
   "hydro_map_svg": null,
   "hydro_description": "Your parcel drains into a local watershed that feeds the Neuse River basin. Understanding flow direction and flood risk is the foundation of responsible water management.",
-
-  "seasonal_precip": { "winter": 3.4, "spring": 3.8, "summer": 4.6, "fall": 3.1 },
-  "seasonal_temp": { "winter_avg": 42, "spring_avg": 58, "summer_avg": 78, "fall_avg": 62 },
+  "annual_precip_in": 44.7,
+  "seasonal_precip": {
+    "winter": 3.4,
+    "spring": 3.8,
+    "summer": 4.6,
+    "fall": 3.1
+  },
+  "seasonal_temp": {
+    "winter_avg": 42,
+    "spring_avg": 58,
+    "summer_avg": 78,
+    "fall_avg": 62
+  },
+  "seasonal_temp_high": {
+    "winter_high": 54,
+    "spring_high": 68,
+    "summer_high": 88,
+    "fall_high": 74
+  },
+  "seasonal_temp_low": {
+    "winter_low": 31,
+    "spring_low": 47,
+    "summer_low": 68,
+    "fall_low": 51
+  },
+  "warmest_month": "Jul",
+  "warmest_month_high_f": 90,
+  "coldest_month": "Jan",
+  "coldest_month_low_f": 29,
+  "prevailing_wind": "southwest",
+  "wind_station_name": "Example Airport",
+  "wind_station_id": "USW00000000",
+  "wind_years": "2016–2025",
+  "wind_days": 3650,
+  "climate_chart_svg": null,
   "wind_rose_svg": null,
   "climate_description": "Thirty-year climate normals establish the baseline your landscape operates within. Seasonal precipitation and temperature patterns determine what thrives here without intervention.",
-
   "soil_map_units": [
     {
       "symbol": "CeB2",
       "name": "Cecil sandy clay loam, 2 to 8 percent slopes, moderately eroded",
-      "drainage_class": "moderately well drained",
-      "k_factor": 0.32,
+      "kind": "Consociation",
       "pct_of_parcel": 58,
-      "implication": "Adequate for most planting; watch lower slopes"
+      "drainage_class": "well drained",
+      "hydrologic_group": "B",
+      "flooding": "None",
+      "available_water_in_top_40in": 4.9,
+      "components": [
+        {
+          "name": "Cecil",
+          "pct_of_unit": 85,
+          "major": true,
+          "drainage_class": "well drained",
+          "hydrologic_group": "B",
+          "surface_texture": "Sandy clay loam",
+          "k_factor": 0.32,
+          "landform": "interfluves on piedmonts",
+          "implication": "Adequate for most planting; watch lower slopes"
+        },
+        {
+          "name": "Appling",
+          "pct_of_unit": 15,
+          "major": false,
+          "drainage_class": "well drained",
+          "hydrologic_group": "B",
+          "surface_texture": "Sandy loam",
+          "k_factor": 0.28,
+          "landform": "interfluves on piedmonts",
+          "implication": "Good infiltration, low erosion risk"
+        }
+      ]
+    },
+    {
+      "symbol": "ApB",
+      "name": "Appling sandy loam, 2 to 8 percent slopes",
+      "kind": "Consociation",
+      "pct_of_parcel": 42,
+      "drainage_class": "well drained",
+      "hydrologic_group": "B",
+      "flooding": "None",
+      "available_water_in_top_40in": 5.3,
+      "components": [
+        {
+          "name": "Appling",
+          "pct_of_unit": 90,
+          "major": true,
+          "drainage_class": "well drained",
+          "hydrologic_group": "B",
+          "surface_texture": "Sandy loam",
+          "k_factor": 0.28,
+          "landform": "interfluves on piedmonts",
+          "implication": "Good infiltration, low erosion risk"
+        }
+      ]
+    }
+  ],
+  "dominant_soil": "Cecil",
+  "dominant_soil_pct": 85,
+  "drainage_class": "well drained",
+  "hydrologic_group": "B",
+  "soil_map_legend": [
+    {
+      "symbol": "CeB2",
+      "name": "Cecil sandy clay loam, 2 to 8 percent slopes, moderately eroded",
+      "drainage_class": "well drained",
+      "on_parcel": true
     },
     {
       "symbol": "ApB",
       "name": "Appling sandy loam, 2 to 8 percent slopes",
       "drainage_class": "well drained",
-      "k_factor": 0.28,
-      "pct_of_parcel": 42,
-      "implication": "Good infiltration, low erosion risk"
+      "on_parcel": true
+    },
+    {
+      "symbol": "ChA",
+      "name": "Chewacla and Wehadkee soils, 0 to 2 percent slopes, frequently flooded",
+      "drainage_class": "somewhat poorly drained",
+      "on_parcel": false
     }
   ],
   "soil_map_svg": null,
   "soil_profile_svg": null,
   "soils_description": "Soil determines drainage, infiltration, and what can root deeply enough to persist. SSURGO data identifies the map units under this parcel and their behavior.",
-
   "heat_accumulation_map_svg": null,
   "canopy_cover_pct": null,
   "building_footprint_sqft": 1200,
   "micro_description": "Microclimate varies across even a small property. Aspect, canopy cover, and building proximity create zones of heat accumulation and cooling that determine plant stress and comfort.",
-
   "vulnerabilities": [
     "The steepest ground (4% of the parcel above 15% grade) sits where runoff concentrates.",
     "The dominant map unit (CeB2) is classified as moderately eroded."
@@ -77,14 +170,41 @@
     "Zone X flood status leaves siting unconstrained by floodplain rules."
   ],
   "synthesis_narrative": "This section contains the practitioner's professional synthesis — observations from the site visit combined with the data findings above. It identifies vulnerabilities the data revealed and opportunities the site offers for ecologically grounded design.",
-
   "data_sources": [
-    { "name": "EPA Level III and IV Ecoregions", "url": "https://www.epa.gov/eco-research/ecoregions", "accessed": "2026-09-17" },
-    { "name": "USGS National Hydrography Dataset", "url": "https://www.usgs.gov/national-hydrography", "accessed": "2026-09-17" },
-    { "name": "NC OneMap 1m DEM and parcels", "url": "https://www.nconemap.gov", "accessed": "2026-09-17" },
-    { "name": "USGS Watershed Boundary Dataset", "url": "https://www.usgs.gov/national-hydrography/watershed-boundary-dataset", "accessed": "2026-09-17" },
-    { "name": "FEMA National Flood Hazard Layer", "url": "https://www.fema.gov/flood-maps/national-flood-hazard-layer", "accessed": "2026-09-17" },
-    { "name": "PRISM Climate Group, Oregon State University", "url": "https://prism.oregonstate.edu", "accessed": "2026-09-17" },
-    { "name": "NRCS SSURGO via Soil Data Access", "url": "https://sdmdataaccess.nrcs.usda.gov", "accessed": "2026-09-17" }
+    {
+      "name": "EPA Level III and IV Ecoregions",
+      "url": "https://www.epa.gov/eco-research/ecoregions",
+      "accessed": "2026-09-17"
+    },
+    {
+      "name": "USGS National Hydrography Dataset",
+      "url": "https://www.usgs.gov/national-hydrography",
+      "accessed": "2026-09-17"
+    },
+    {
+      "name": "NC OneMap 1m DEM and parcels",
+      "url": "https://www.nconemap.gov",
+      "accessed": "2026-09-17"
+    },
+    {
+      "name": "USGS Watershed Boundary Dataset",
+      "url": "https://www.usgs.gov/national-hydrography/watershed-boundary-dataset",
+      "accessed": "2026-09-17"
+    },
+    {
+      "name": "FEMA National Flood Hazard Layer",
+      "url": "https://www.fema.gov/flood-maps/national-flood-hazard-layer",
+      "accessed": "2026-09-17"
+    },
+    {
+      "name": "PRISM Climate Group, Oregon State University",
+      "url": "https://prism.oregonstate.edu",
+      "accessed": "2026-09-17"
+    },
+    {
+      "name": "NRCS SSURGO via Soil Data Access",
+      "url": "https://sdmdataaccess.nrcs.usda.gov",
+      "accessed": "2026-09-17"
+    }
   ]
 }

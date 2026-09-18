@@ -1,9 +1,11 @@
 # Builds a site assessment report from live data for one parcel.
 #
 # Scope today: cover + sections 01 (Regional context), 02 (Topography and
-# landform) and 03 (Hydrology and drainage) on real data; the other sections
-# render their honest "not available" state until their pipelines are wired in. No prose is generated here (that is deliberately
-# deferred), so the section shows numbers and graphics without a narrative.
+# landform), 03 (Hydrology and drainage), 04 (Climate and wind) and 05 (Soils
+# and infiltration) on real data; the other sections render their honest
+# "not available" state until their pipelines are wired in. No prose is
+# generated here (that is deliberately deferred), so each section shows
+# numbers and graphics without a narrative.
 #
 # The site is passed by environment variable, never written into the repo:
 # this repository is public and real client addresses stay out of tracked
@@ -17,16 +19,22 @@
 # orients the ground profile and the "Street" label. It comes from the
 # practitioner (or a road lookup), not from the terrain.
 #
-# Optional: BUILDING_FOOTPRINTS_CACHE_DIR points at a directory that already
-# holds the county footprint download (tens of MB the first time).
+# Caches (all under data/, gitignored; KED_DATA_DIR moves them): the county
+# building footprints (69 MB the first time), the PRISM normal grids (134 MB
+# once, shared by every parcel), the GHCND station list and daily wind
+# records, and the county road/hydrology/soil layers. A rebuild with warm
+# caches makes live calls only for the parcel, DEM, flood, watershed,
+# ecoregion and SSURGO tabular queries.
 
 suppressPackageStartupMessages({library(sf); library(terra); library(jsonlite)})
 for (f in c("R/acquisition/parcel.R", "R/acquisition/dem.R", "R/acquisition/building_footprint.R",
             "R/acquisition/watershed.R", "R/acquisition/flood.R", "R/acquisition/roads.R",
             "R/acquisition/ecoregion.R", "R/acquisition/hydrography.R", "R/acquisition/boundaries.R",
-            "R/acquisition/local_cache.R", "R/illustrate/basemap_tiles.R", "R/illustrate/neighborhood_context.R",
+            "R/acquisition/local_cache.R", "R/acquisition/climate.R", "R/acquisition/wind.R",
+            "R/acquisition/soil.R", "R/illustrate/basemap_tiles.R", "R/illustrate/neighborhood_context.R",
             "R/illustrate/parcel_building_mask.R", "R/illustrate/parcel_topography.R",
             "R/illustrate/parcel_hydrology.R", "R/illustrate/regional_orientation.R",
+            "R/illustrate/climate_wind.R", "R/illustrate/parcel_soils.R",
             "R/report/render_report.R")) source(f)
 
 need <- function(var) {
@@ -94,6 +102,29 @@ rstats <- regional_stats(eco, ws)
 svg_regional <- ggplot_to_svg(render_regional_inset_ked(reg), 7.6, 3.8)
 svg_orient   <- ggplot_to_svg(render_neighborhood_orientation_ked(orient), 7.6, 6.2)
 
+# ---- section 04: climate and wind ------------------------------------------
+message("Climate and wind ...")
+normals <- get_seasonal_normals(parcel)          # PRISM grids, cached under data/prism
+wind <- get_wind_data(parcel)                    # nearest USW station, ten complete years, cached
+cl <- prep_climate(normals, wind)
+cstats <- climate_stats(cl)
+svg_climate <- ggplot_to_svg(render_climate_chart_ked(cl), 7.6, 5.6)
+svg_wind    <- ggplot_to_svg(render_wind_rose_ked(cl), 7.6, 7.0)
+
+# ---- section 05: soils -----------------------------------------------------
+message("Soils ...")
+soil_polys <- cached_layer(county, "ssurgo_mupolygon", function() get_soil_polygons(nb_extent),
+                           "https://sdmdataaccess.nrcs.usda.gov (mupolygon)", "SSURGO as served by Soil Data Access",
+                           extent = nb_extent)
+soil_ag <- get_mapunit_aggregates(unique(soil_polys$mukey))
+soil_comps <- get_mapunit_components(unique(soil_polys$mukey))
+own_mukeys <- unique(get_soil_polygons(parcel)$mukey)
+soil_hz <- get_component_horizons(soil_comps$cokey[soil_comps$mukey %in% own_mukeys])
+so <- prep_soils(parcel, soil_polys, soil_ag, soil_comps, soil_hz, roads, hydro)
+sstats <- soils_stats(so)
+svg_soil_map     <- ggplot_to_svg(render_soil_map_ked(so), 7.6, 7.2)
+svg_soil_profile <- ggplot_to_svg(render_soil_profile_ked(so), 7.6, 5.2)
+
 centroid <- st_coordinates(st_centroid(st_geometry(st_transform(parcel, 4326))))
 
 payload <- list(
@@ -130,6 +161,36 @@ payload <- list(
   parcel_flow_map_svg = svg_flow,
   hydro_map_svg = svg_nbhd,
 
+  annual_precip_in = cstats$annual_precip_in,
+  seasonal_precip = cstats$seasonal_precip,
+  seasonal_temp = cstats$seasonal_temp,
+  seasonal_temp_high = cstats$seasonal_temp_high,
+  seasonal_temp_low = cstats$seasonal_temp_low,
+  warmest_month = cstats$warmest_month,
+  warmest_month_high_f = cstats$warmest_month_high_f,
+  coldest_month = cstats$coldest_month,
+  coldest_month_low_f = cstats$coldest_month_low_f,
+  wettest_month = cstats$wettest_month,
+  driest_month = cstats$driest_month,
+  months_avg_low_below_freezing = cstats$months_avg_low_below_freezing,
+  prevailing_wind = cstats$prevailing_wind,
+  wind_station_name = cstats$wind_station_name,
+  wind_station_id = cstats$wind_station_id,
+  wind_years = cstats$wind_years,
+  wind_days = cstats$wind_days,
+  climate_chart_svg = svg_climate,
+  wind_rose_svg = svg_wind,
+
+  soil_map_units = sstats$soil_map_units,
+  dominant_soil = sstats$dominant_soil,
+  dominant_soil_pct = sstats$dominant_soil_pct,
+  drainage_class = sstats$drainage_class,
+  hydrologic_group = sstats$hydrologic_group,
+  available_water_in_top_40in = sstats$available_water_in_top_40in,
+  soil_map_legend = sstats$soil_map_legend,
+  soil_map_svg = svg_soil_map,
+  soil_profile_svg = svg_soil_profile,
+
   data_sources = list(
     list(name = "NC OneMap parcels (NC1Map_Parcels)", url = "https://www.nconemap.gov", accessed = format(Sys.Date())),
     list(name = "NC OneMap 3 ft bare-earth DEM (DEM03)", url = "https://www.nconemap.gov", accessed = format(Sys.Date())),
@@ -140,14 +201,18 @@ payload <- list(
     list(name = "USGS Watershed Boundary Dataset (HUC06, HUC12)", url = "https://www.usgs.gov/national-hydrography/watershed-boundary-dataset", accessed = format(Sys.Date())),
     list(name = "FEMA National Flood Hazard Layer", url = "https://www.fema.gov/flood-maps/national-flood-hazard-layer", accessed = format(Sys.Date())),
     list(name = "City of Raleigh Hydrology", url = "https://services.arcgis.com/v400IkDOw1ad7Yad/arcgis/rest/services/Hydrology/FeatureServer", accessed = attr(hydro, "manifest")$downloaded %||% format(Sys.Date())),
-    list(name = "OpenStreetMap contributors (roads)", url = "https://www.openstreetmap.org/copyright", accessed = attr(roads, "manifest")$downloaded %||% format(Sys.Date()))
+    list(name = "OpenStreetMap contributors (roads)", url = "https://www.openstreetmap.org/copyright", accessed = attr(roads, "manifest")$downloaded %||% format(Sys.Date())),
+    list(name = "PRISM Climate Group, Oregon State University (30-year normals 1991-2020, 4 km)", url = "https://prism.oregonstate.edu/normals/", accessed = format(Sys.Date())),
+    list(name = sprintf("NOAA NCEI GHCN-Daily summaries, station %s (%s)", cstats$wind_station_id, cstats$wind_station_name), url = "https://www.ncei.noaa.gov/access/services/data/v1", accessed = format(Sys.Date())),
+    list(name = "NRCS SSURGO via Soil Data Access (map unit polygons, components, horizons)", url = "https://sdmdataaccess.nrcs.usda.gov", accessed = attr(soil_polys, "manifest")$downloaded %||% format(Sys.Date()))
   )
 )
 
 slug <- address_slug(payload$address)
 payload_path <- file.path(out_dir, paste0(slug, "_payload.json"))
 write_json(payload, payload_path, auto_unbox = TRUE, null = "null", pretty = TRUE, digits = NA)
-saveRDS(list(parcel = parcel, dem = wrap(dem), bldgs = bldgs, stats = stats, ws = ws, flood = flood, hstats = hstats),
+saveRDS(list(parcel = parcel, dem = wrap(dem), bldgs = bldgs, stats = stats, ws = ws, flood = flood, hstats = hstats,
+             normals = normals, wind = wind, cstats = cstats, soils = so[c("own", "own_comps", "hz", "ag", "in_frame")], sstats = sstats),
         file.path(out_dir, paste0(slug, "_data.rds")))
 out <- render_site_assessment(payload, out_dir = out_dir)
 message("Wrote ", payload_path, "\nWrote ", out)
