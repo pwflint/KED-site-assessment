@@ -1,0 +1,318 @@
+<title>Terrain & Climate Gallery</title>
+<style>
+  :root {
+    --bg: #faf9f5;
+    --ink: #2b2a26;
+    --muted: #8c8579;
+    --accent: #9a6a2f;
+    --accent-soft: #e9dcc8;
+    --card: #ffffff;
+    --border: #e8e4db;
+    --tag-climate: #4f7a8c;
+    --tag-terrain: #7a6a4f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c1b18;
+      --ink: #eeece5;
+      --muted: #9a9488;
+      --accent: #c99a5c;
+      --accent-soft: #3a2f1f;
+      --card: #242220;
+      --border: #3a3733;
+      --tag-climate: #7fb0c2;
+      --tag-terrain: #b09a72;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1b18;
+    --ink: #eeece5;
+    --muted: #9a9488;
+    --accent: #c99a5c;
+    --accent-soft: #3a2f1f;
+    --card: #242220;
+    --border: #3a3733;
+    --tag-climate: #7fb0c2;
+    --tag-terrain: #b09a72;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 0 20px;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding-block: 3.5rem 6rem; }
+
+  header.page { margin-bottom: 3.5rem; }
+  .eyebrow {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 0 0.9rem;
+  }
+  h1 {
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    margin: 0 0 0.9rem;
+    text-wrap: balance;
+    letter-spacing: -0.01em;
+  }
+  .lede {
+    max-width: 62ch;
+    color: var(--muted);
+    font-size: 1.02rem;
+  }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .anchor-card {
+    margin-top: 2.2rem;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 1.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.2rem;
+    align-items: center;
+  }
+  .anchor-card img {
+    width: 100%;
+    border-radius: 3px;
+    display: block;
+  }
+  .anchor-card .label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 0 0 0.4rem;
+  }
+  .anchor-card h3 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+  .anchor-card p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+  section.category { margin-top: 3.5rem; }
+  .cat-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.7rem;
+    margin-bottom: 1.6rem;
+  }
+  .cat-head h2 { font-size: 1.3rem; margin: 0; }
+  .cat-count { color: var(--muted); font-size: 0.85rem; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.4rem;
+  }
+  @media (max-width: 760px) {
+    .grid { grid-template-columns: 1fr; }
+    .anchor-card { grid-template-columns: 1fr; }
+  }
+
+  figure.card {
+    margin: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 12px 28px -18px rgba(0,0,0,0.25);
+    display: flex;
+    flex-direction: column;
+  }
+  figure.card .imgwrap {
+    background: var(--accent-soft);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  figure.card img {
+    width: 100%;
+    display: block;
+  }
+  figcaption { padding: 1rem 1.1rem 1.2rem; }
+  .tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+    margin-bottom: 0.6rem;
+  }
+  .tag.climate { color: var(--tag-climate); background: color-mix(in srgb, var(--tag-climate) 15%, transparent); }
+  .tag.terrain { color: var(--tag-terrain); background: color-mix(in srgb, var(--tag-terrain) 15%, transparent); }
+
+  figcaption h3 { margin: 0 0 0.3rem; font-size: 1.02rem; }
+  .credit { font-size: 0.82rem; color: var(--muted); margin: 0 0 0.6rem; }
+  .credit a { color: var(--muted); }
+  .technique { font-size: 0.9rem; margin: 0 0 0.7rem; }
+  .transfer {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0;
+    padding-top: 0.6rem;
+    border-top: 1px dashed var(--border);
+  }
+  .transfer b { color: var(--ink); font-weight: 600; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  footer.page {
+    margin-top: 4rem;
+    padding-top: 1.6rem;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="page">
+    <p class="eyebrow">Site Assessment Data Visualization — reference set</p>
+    <h1>Climate &amp; site morphology, drawn from TidyTuesday</h1>
+    <p class="lede">Ten real, reproducible R/ggplot2 charts pulled directly from the TidyTuesday community archive — the actual rendered images, not descriptions of them — chosen for technique that transfers to KED's regional / neighborhood / parcel illustration work. Every card names its source repo so a coding agent can go read the code, not just look at the picture.</p>
+
+    <div class="anchor-card">
+      <img src="images/ked-existing-reference.jpg" alt="Trends of Daily Temperatures for Selected Cities, by Cédric Scherer" />
+      <div>
+        <p class="label">Existing KED style anchor — not TidyTuesday</p>
+        <h3>“Trends of Daily Temperatures for Selected Cities”</h3>
+        <p>Cédric Scherer · data: University of Dayton. Already sitting in <code>docs/reference/dataViz_temp.jpg</code> as the visual target — radial small multiples, one city per panel, muted warm-to-cool gradient. Included here so it sits next to its own community, not as a new find.</p>
+      </div>
+    </div>
+  </header>
+
+  <section class="category">
+    <div class="cat-head">
+      <h2>Climate</h2>
+      <span class="cat-count">5 examples</span>
+    </div>
+    <div class="grid">
+
+      <figure class="card">
+        <div class="imgwrap"><img src="images/climate-global-surface-temperatures.png" alt="Global Surface Temperatures radial chart"></div>
+        <figcaption>
+          <span class="tag climate">Climate</span>
+          <h3>Global Surface Temperatures</h3>
+          <p class="credit">Nicola Rennie · TidyTuesday 2023‑07‑11 · NASA GISTEMP v4 · <a href="https://github.com/nrennie/tidytuesday/blob/main/2023/2023-07-11/20230711.R" target="_blank" rel="noopener">source code</a></p>
+          <p class="technique">Radial year-ring chart: each month is a spoke, each ring a year, color is temperature deviation from the 1951–1980 baseline. Rings drift outward and redward over time.</p>
+          <p class="transfer"><b>Transfer:</b> a real precedent for a circular, ring-per-year layout — close in spirit to KED's own polar reference chart above, but encoding trend-over-time instead of one year's daily cycle.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="card">
+        <div class="imgwrap"><img src="images/climate-us-droughts.png" alt="US Droughts geofaceted small multiples"></div>
+        <figcaption>
+          <span class="tag climate">Climate</span>
+          <h3>US Droughts</h3>
+          <p class="credit">Nicola Rennie · TidyTuesday 2022‑06‑14 · National Integrated Drought Information System · <a href="https://github.com/nrennie/tidytuesday/blob/main/2022/2022-06-14/20220614.R" target="_blank" rel="noopener">source code</a></p>
+          <p class="technique">Geofaceted small multiples — one stacked-severity area chart per state, arranged in the real shape of the US map, all sharing one axis and one 5-tier severity color ramp.</p>
+          <p class="transfer"><b>Transfer:</b> raw severity categories stacked, not collapsed to one number — exactly KED's own convention of keeping raw fields (e.g. flood zone categories) uncollapsed until synthesis.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="card">
+        <div class="imgwrap"><img src="images/climate-uk-sunshine.png" alt="UK sunshine hours strip plot by month"></div>
+        <figcaption>
+          <span class="tag climate">Climate</span>
+          <h3>Looking for Sunshine in Leuchars? Go in May!</h3>
+          <p class="credit">Nicola Rennie · TidyTuesday 2025‑10‑21 · UK Met Office · <a href="https://github.com/nrennie/tidytuesday/blob/main/2025/2025-10-21/20251021.R" target="_blank" rel="noopener">source code</a></p>
+          <p class="technique">One strip per month, every year plotted as a thin vertical rule on the same scale, a bold rule marking the 70-year average — a station-level climate-normal record shown as distribution, not just a mean.</p>
+          <p class="transfer"><b>Transfer:</b> directly on-topic for PRISM climate normals — shows the spread behind a "normal," which a single mean figure in KED's report would otherwise hide.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="card">
+        <div class="imgwrap"><img src="images/climate-forecast-accuracy.png" alt="Weather forecast accuracy geofaceted chart"></div>
+        <figcaption>
+          <span class="tag climate">Climate</span>
+          <h3>Higher or Lower? (Forecast Accuracy)</h3>
+          <p class="credit">Nicola Rennie · TidyTuesday 2022‑12‑20 · US National Weather Service · <a href="https://github.com/nrennie/tidytuesday/blob/main/2022/2022-12-20/20221220.R" target="_blank" rel="noopener">source code</a></p>
+          <p class="technique">Same geofacet-small-multiples device as the drought chart, this time for a modeled-estimate-vs-observed relationship, with one state enlarged as a legible "how to read this" key.</p>
+          <p class="transfer"><b>Transfer:</b> a worked pattern for "estimate vs. ground truth," relevant once KED layers practitioner field annotation over acquired data (Layer 3 synthesis).</p>
+        </figcaption>
+      </figure>
+
+      <figure class="card">
+        <div class="imgwrap"><img src="images/climate-wind-turbines-isotype.png" alt="Canadian wind turbines isotype pictogram chart"></div>
+        <figcaption>
+          <span class="tag climate">Climate</span>
+          <h3>Canadian Wind Turbines, by Province</h3>
+          <p class="credit">Nicola Rennie · TidyTuesday 2020‑10‑27 · Natural Resources Canada · <a href="https://github.com/nrennie/tidytuesday/blob/main/2020/2020-10-27/20201027.R" target="_blank" rel="noopener">source code</a></p>
+          <p class="technique">Isotype/pictogram count chart — one turbine glyph per unit, colored by province, grouped into five-year bins. Every mark is literally the thing being counted.</p>
+          <p class="transfer"><b>Transfer:</b> a plain-language device worth knowing about for a client-facing report — makes a count legible without a reader needing to interpret an axis.</p>
+        </figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <section class="category">
+    <div class="cat-head">
+      <h2>Site morphology &amp; terrain</h2>
+      <span class="cat-count">5 examples</span>
+    </div>
+    <div class="grid">
+
+      <figure class="card">
+        <div class="imgwrap"><img src="images/terrain-wind-farm-elevations.png" alt="Canadian wind farm elevations terrain silhouette"></div>
+        <figcaption>
+          <span class="tag terrain">Terrain</span>
+          <h3>Canadian Wind Farm Elevations</h3>
+          <p class="credit">@sccmckenzie · TidyTuesday, Canadian Wind Turbine dataset · Government of Canada · <a href="https://github.com/sccmckenzie/tidytuesday/blob/master/wind-turbines/wind-turbines.R" target="_blank" rel="noopener">source code</a></p>
+          <p class="technique">Turbine sites re-sorted by elevation and rendered as a single continuous mountain-silhouette area — a literal terrain profile built entirely from tabular data, no DEM raster involved.</p>
+          <p class="transfer"><b>Transfer:</b> the closest thing in this set to an elevation-profile illustration — worth a look for KED's own contour/elevation work even though the underlying data isn't a DEM.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="card">
+        <div class="imgwrap"><img src="images/terrain-scottish-munros.png" alt="Scottish Munros elevation density chart"></div>
+        <figcaption>
+          <span class="tag terrain">Terrain</span>
+          <h3>How Tall Are Scotland's Munros?</h3>
+          <p class="credit">Nicola Rennie · TidyTuesday 2025‑08‑19 · Database of British &amp; Irish Hills · <a href="https://github.com/nrennie/tidytuesday/blob/main/2025/2025-08-19/20250819.R" target="_blank" rel="noopener">source code</a></p>
+          <p class="technique">A single elevation-density ridge with the classification threshold, median, mean and the tallest peak all called out as reference lines directly on the curve — no legend needed.</p>
+          <p class="transfer"><b>Transfer:</b> a clean pattern for KED's slope/erosion-threshold graphics — annotate the real regulatory or NRCS threshold directly on the distribution, the way <code>parcel_slope_drainage.R</code>'s 20%-grade line could be.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="card">
+        <div class="imgwrap"><img src="images/terrain-himalayan-ranges.png" alt="Himalayan mountain ranges ridgeline chart by height"></div>
+        <figcaption>
+          <span class="tag terrain">Terrain</span>
+          <h3>Taller Mountain Ranges Are More Dangerous</h3>
+          <p class="credit">Nicola Rennie · TidyTuesday 2025‑01‑21 · The Himalayan Database · <a href="https://github.com/nrennie/tidytuesday/blob/main/2025/2025-01-21/20250121.R" target="_blank" rel="noopener">source code</a></p>
+          <p class="technique">A true ridgeline — peak-height distribution per mountain range, stacked, colored by a derived risk metric (fatality rate) rather than by the raw height itself.</p>
+          <p class="transfer"><b>Transfer:</b> same move as KED's Graphic 2 (slope % as the encoded variable, not raw elevation) — derived risk/metric drives color, raw terrain drives shape.</p>
+        </figcaption>
+      </figure>
+
+      <figure class="card" style="grid-column: 1 / -1;">
+        <div class="imgwrap"><img src="images/terrain-vesuvius-seismic.png" alt="Mount Vesuvius seismic events calendar heatmap"></div>
+        <figcaption>
+          <span class="tag terrain">Terrain</span>
+          <h3>Seismic Events at Mount Vesuvius</h3>
+          <p class="credit">Nicola Rennie · TidyTuesday 2025‑05‑13 · Istituto Nazionale di Geofisica e Vulcanologia · <a href="https://github.com/nrennie/tidytuesday/blob/main/2025/2025-05-13/20250513.R" target="_blank" rel="noopener">source code</a></p>
+          <p class="technique">Two-tier calendar heatmap: <code>geom_tile()</code> annual-summary strip above a <code>geom_raster()</code> week-by-week grid per year, twelve years faceted side by side, one shared magnitude palette.</p>
+          <p class="transfer"><b>Transfer:</b> a real worked example of tiling a derived-metric grid across a facet — directly applicable if KED ever needs a "years of drought/flood history at this site" summary view.</p>
+        </figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <footer class="page">
+    <p>Curated 2026‑09‑16 for KED Site Assessment (<code>_dev-siteAssessment</code>, R / ggplot2 / terra / sf stack). Companion to the full write‑up saved in the <b>Site Assessment Data Visualization</b> project. Images are the contributors' own rendered output, reproduced here for reference with credit and a link back to source — not KED's work.</p>
+  </footer>
+
+</div>

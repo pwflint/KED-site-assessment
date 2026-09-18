@@ -16,3 +16,12 @@
 # Logs / temp
 *.log
 *.tmp
+
+# Generated client reports (contain real addresses — this repo is public)
+output/
+
+# Local county data cache (see docs/DATA_SOURCE_RESEARCH.md, "Local county data cache")
+data/
+
+# Oversized reference image (46 MB) — kept on disk, not in the public repo
+docs/reference/Graphic Mood Board.png

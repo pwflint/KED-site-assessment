@@ -9,3 +9,15 @@
 
 # Local Claude Code session state — not project content
 .claude/settings.local.json
+
+# Mirrors of .gitignore entries that Oak did not honor in practice (2026-09-18:
+# a checkpoint swept 455 cache files and the generated reports into the branch).
+# Generated client reports (contain real addresses — this repo is public)
+output/
+# Local data caches (county layers, PRISM grids, GHCND records, footprints)
+data/
+# OS / logs / temp
+.DS_Store
+._*
+*.log
+*.tmp

@@ -1,7 +1,7 @@
 ---
 author: peter
 created: '2026-07-28'
-modified: '2026-07-28'
+modified: '2026-09-18'
 status: development
 tags:
   - domain/gis
@@ -27,6 +27,11 @@ This document tracks design decisions, judgment calls, and rejected approaches f
 - [x] Regional-scale inset (state-scale ecoregion + river context) — prototype settled, `R/illustrate/regional_inset.R`
 - [x] Neighborhood-scale main image (contours + local hydrology + watershed boundary) — prototype settled, `R/illustrate/neighborhood_context.R`
 - [x] Parcel-scale illustration, two graphics — prototypes settled, `R/illustrate/parcel_base_map.R`, `parcel_slope_drainage.R`, `parcel_building_mask.R`
+- [x] Section 02 client-facing set (base map, slope/drainage, ground profile, aspect rose) styled to the design system — first pass 2026-09-17, `R/illustrate/parcel_topography.R`; see the section near the end of this document
+- [x] Section 03 client-facing set (parcel flow arrows, self-rendered neighborhood subwatershed map) — first pass 2026-09-18, `R/illustrate/parcel_hydrology.R`
+- [x] Section 01 client-facing set (regional inset, neighborhood orientation map) — first pass 2026-09-18, `R/illustrate/regional_orientation.R`
+- [x] Section 04 client-facing set (monthly climate chart, seasonal wind roses) — first pass 2026-09-18, `R/illustrate/climate_wind.R`
+- [x] Section 05 client-facing set (neighborhood soil map, map unit soil profiles) — first pass 2026-09-18, `R/illustrate/parcel_soils.R`; see the last two sections
 - [ ] Prose for any of the above — explicitly deferred by Peter until the writing approach itself is validated; do not draft unprompted
 
 ---
@@ -88,6 +93,8 @@ Three providers were evaluated for a "quiet, no-label" tile backdrop:
 
 **Provider choice is explicitly deferred to when this project starts testing additional parcels/geographies** (Peter's instruction, 2026-07-28) — use Carto for now to produce working prototypes, revisit then. Do not silently swap providers without re-flagging this same tradeoff.
 
+**Decision 2026-09-18 (Peter): self-rendered vector base, no raster tile, for the client-facing neighborhood graphic.** Reopened deliberately, not silently. What changed since July: (1) the design system now exists and a raster tile cannot participate in it — it is a fixed picture of someone else's palette, cannot follow dark mode, and reads as foreign inside an ochre card, while the system's own direction for this section (water linework, material-warm structure, bloom parcel marker) describes a self-drawn map; (2) the delivered report is a self-contained file with SVG inlined, so a tile provider vanishing breaks future builds, not delivered reports — a smaller risk than it looked when the delivery format was undecided; (3) commercial use of free tile sets is the sharper question than stability (Carto's terms not verified; treat as a check, not a finding). Stock-tile fallback, if vector rendering proves too slow to get right: keep Carto as a faint desaturated underlay at low opacity, cache tiles per assessment, accept the dark-mode mismatch. `basemap_tiles.R` stays in the repo for that. Data-sourcing consequences (county cache, vintage in the manifest) are in `docs/DATA_SOURCE_RESEARCH.md`, "Local county data cache".
+
 ### Explicitly deferred (Peter's instruction, not oversight)
 - Standard extent sizing (see above)
 - Promoting `fetch_raleigh_hydrology()` out of `neighborhood_context.R` into a proper `R/acquisition/` function once a second (non-Raleigh) source is found and the pattern is proven across more than one city
@@ -124,3 +131,168 @@ Peter's original concern going in was resolution (a 15ft buffer gives only ~26×
 ### Explicitly deferred / not validated generally
 - All grid/threshold parameters (`grid_spacing_ft`, `bldg_clearance_ft`, the focal smoothing window, the 0.25ft contour interval) were tuned against one small (0.14 acre), rectangular, one-building parcel. Untested on a larger or irregularly-shaped lot, or one with multiple structures.
 - The canopy-at-parcel-scale question isn't solved for cases where it matters more (e.g., a heavily wooded lot) — it's just correctly absent here, not designed around yet.
+
+---
+
+## Section 02, client-facing set (`R/illustrate/parcel_topography.R`, `R/report/build_site_report.R`)
+
+**Job:** turn the two settled parcel-scale prototypes into report graphics that follow `docs/DESIGN_SYSTEM.md`, and add the two topography graphics the PRD names that had no prototype yet (elevation profile, aspect rose). Built 2026-09-17 against the test parcel, first pass, not validated on a second site. The prototype scripts stay untouched as the plain-R record of what was validated; this file is the styled version and reads the same data.
+
+**Output format, now decided for this section:** inline SVG via `svglite`, one string per graphic, embedded by `R/report/render_report.R`. `ggplot_to_svg()` strips the fixed size (so CSS `width:100%` scales it), makes the background transparent (the `.viz-card` surface shows through), removes svglite's `textLength` attributes (otherwise the browser stretches every label to R's font metrics), and swaps the chrome hex values (ink, muted, line, surface, accent) for the design system's CSS variables so the SVG follows light/dark mode. Data-family colors (ochre, ember, water, gold, material) stay literal, per the design system's rule that the paper-tier steps hold in both themes. All SVG text is Poppins; Cabin is reserved for HTML headings so R never needs it installed.
+
+### The four graphics, and what each interpolates
+
+1. **Base map** — contours over a hypsometric tint (ochre-01 to 03), index contours labeled, own building material-warm-04, neighbors material-warm-02, parcel line dashed ink, "STREET" label on the street side, A to A′ transect marker, scale bar and north arrow. The DEM is masked around the building first (unchanged rule), then upsampled 4x bilinear and smoothed with a 5-cell mean before contouring. That is the interpolation: it makes 0.25 ft contours read as ground instead of 3 ft pixel edges. It adds no information and the parcel relief it reports (4.8 ft) matches the raw masked DEM exactly (checked, not assumed).
+2. **Slope and drainage** — slope-class fill (ochre-01 flat to ochre-04 steep, from a 7-cell smoothed slope with polygon corners rounded by an open/close buffer), downhill arrows in water-05 with local grade labels, erosion-risk zone (over 20%, same threshold as `dem.R`) in ember-03/05. Legend lives in the HTML under the card, not in the SVG. The class fill is for reading; the stats use the less-smoothed slope.
+3. **Ground profile** — elevation sampled every 1 ft along a straight transect from the street edge through the parcel centroid to the back edge, relative to its low point. The run under the house is a straight-line interpolation between the ground at the two walls, drawn dashed with a translucent house block over it, and the caption says so. **Real finding on the test parcel:** the low point of this line sits directly behind the house at its back wall, and the back yard rises 2.3 ft from there to the rear line. The back yard drains toward the house. That is the kind of thing this graphic exists to surface; prose about it stays deferred.
+4. **Aspect rose** — share of sloping ground (over 1.5% grade, so flat cells with meaningless aspect are excluded) in each of eight compass octants, gold-04 for the three south-facing octants, gold-02 otherwise. Test parcel: 39% faces SE, 30% E, 18% S.
+
+### Numbers that changed from the earlier notes, and why
+
+- **Parcel relief is 4.8 ft (316.3 to 321.1 ft), not the 2.3 ft recorded in `DATA_SOURCE_RESEARCH.md`.** The earlier figure came from a tighter 20 ft clip in the first DEM session; the parcel's SW corner rises to 321 ft and is inside the parcel line. Confirmed on the raw, unsmoothed, building-masked DEM before trusting the smoothed value.
+- **"Steepest grade" in the stat row is the 99th percentile of on-parcel slope (19%), not the maximum.** A single spiky cell at the curb or a wall base should not headline the section. The erosion-risk share (0.7% of the parcel over 20%) still uses every cell.
+
+### Decisions made here that deserve Peter's eye
+
+- **Street side is an input, not a detection.** `KED_STREET_SIDE` (E/W/N/S) orients the transect and the label. For the test parcel it was read off OpenStreetMap by hand (Hill St runs north-south along the east edge). A road lookup could automate it later; guessing it from terrain would be wrong.
+- **Label text uses `--ink`, not the family's 07 step.** The design system rule is for labels on data fills; these labels sit on a label box that flips with the theme, and the 07 step went invisible in dark mode. Caught in the browser, not in R.
+- **The slope graphic is framed tight (14 ft) and the base map wide (30 ft).** The base map carries neighborhood context; the slope graphic only says something about the parcel.
+- Canopy is still absent at this scale, for the reason recorded above (30 m NLCD pixels).
+
+### Not validated generally
+
+Same caveat as the prototypes: every parameter (buffers, smoothing windows, grid spacing, contour interval, the 1.5% aspect cutoff) was tuned on one small rectangular parcel with one building on a 4.8 ft relief. A larger, wooded, or irregular lot, or one with 20 ft of relief, will need the transect, the contour interval, and the profile's vertical scale revisited.
+
+### Review notes, first pass (Peter, 2026-09-18) — to be worked in a separate revision pass
+
+Verdict: good first iteration, minor edits. Recorded here so the revision pass has a checklist and the reasoning behind each item.
+
+1. **Base map — white halo around the building footprint.** A pale boundary rings the house and interrupts the tint. Not visually pleasing. Likely cause, not yet confirmed: the smoothing pass (`focal` with `na.policy = "omit"`) leaves NA cells at the mask edge and the re-mask widens them, so the card surface shows through the raster. Fix candidates: fill the tint under the building from the unmasked (interpolated) surface and only mask the *contours*, or grow the tint one cell into the footprint before drawing the building on top.
+2. **Base map — second building footprint at the bottom of the frame.** It is the neighbor's house (PID differs from the parcel's parno; confirmed, not erroneous), but as drawn it reads as an error: cut off by the frame edge, opaque, unlabeled. Either drop neighbor footprints from this graphic or keep them clipped to the raster extent, more transparent, and labeled ("neighboring residence").
+3. **Slope graphic — keep, but simplify.** The class fill is good. The per-cell arrow field is too busy for section 02 and is really hydrology. For section 02: three to five arrows showing the general direction of fall, no per-arrow labels. **The busy version is not thrown away:** flow arrows over the contours from the base map become the localized-hydrology graphic for section 03 (not yet built). Tabled until section 03 exists.
+4. **Ground profile — feels exaggerated, and the house block does not read.** The vertical exaggeration may be an artifact of the profile being squeezed into the 3:2 pair column; test it at full card width before changing the scale. The grey rectangle with the gap beneath it is not something a layperson can read. Redraw the house as a simple outline that sits on the interpolated ground line, or shade the span without a block.
+5. **Aspect rose — keep.** Unexpected and useful.
+6. **Slope distribution bars — keep.**
+
+7. **(Added 2026-09-18) Label buildings with their addresses.** When the neighbor footprint is cropped to the map, label it with its street address; label the subject parcel's building with its own address too. Applies to the section 02 base map and the section 03 parcel flow map alike (same base).
+
+Not changed yet: the code still produces the first-pass versions. The revision pass should re-verify in the browser at desktop and phone widths, light and dark, as before.
+
+---
+
+## Section 03, client-facing set (`R/illustrate/parcel_hydrology.R`)
+
+**Job (Peter, 2026-09-18):** show the immediate micro-context of water on the lot, then zoom out to the neighborhood. The whole report moves zoom out, zoom in, zoom out; this section is the first zoom-in after section 02, then the step back out. First pass, built on the test parcel, not validated on a second site.
+
+### Graphic 1, parcel flow
+The section 02 base map (hypsometric tint, 0.25 ft contours, buildings, parcel line) with downhill flow arrows over it, no slope labels, no class fill, no transect. Same arrow field as the slope graphic (`downhill_arrows()`, now shared), water-05, longer = steeper. Peter's review of section 02 moves the busy arrow field here; the section 02 slope graphic will be simplified to a handful of arrows in the revision pass. The contour labels are off on this one so the arrows are the only annotation.
+
+### Graphic 2, neighborhood subwatershed
+The self-rendered base, per the 2026-09-18 decision above (no raster tile). Layers, bottom to top: the parcel's own HUC12 tinted water-01 (neighbors untinted, so the tint reads as "your watershed"); flood polygon in ember-02 if FEMA returned one; contours 2 ft / 10 ft from the DEM aggregated to 25 ft cells (ochre-02/03, very light); buildings material-warm-02; roads in three weights by OSM class (residential and below thin, tertiary, primary/secondary); minor reaches water-02, major reaches (grouped by RCH_CODE, over 1,000 ft total) water-04 with one flow arrow each labeled "to {HUC12 name}"; the HUC12 boundary dashed in the accent, extracted from the unclipped polygon (the July bug); watershed names as labels on both sides of the boundary; three named through-roads labeled along their line; the parcel as a bloom-05 fill with a ring and "your parcel". Scale bar, north arrow.
+
+**Real bug caught building it:** flow direction is decided by comparing DEM elevation along the reach, and the clipped reach ends sit exactly on the frame edge where the DEM sample is NA, so no arrows were produced at first. Now elevation is compared a little way in from each end and the arrow is drawn at 80% of the way toward the downstream end so it stays in frame.
+
+**Second real finding:** the state footprint GDB stores some buildings as MULTISURFACE (curved edges). GEOS cannot intersect those; everything is cast to MULTIPOLYGON before clipping. Section 02 never hit this because it only intersects with the parcel's own rectangular building.
+
+### Stats for the section
+Watershed (HUC12), river basin (HUC06), FEMA zone plus subtype, and "ground drains toward", which is the dominant octant of the section 02 aspect rose (southeast on the test parcel). `downstream_huc12_name` (from `tohuc`) is only populated when the downstream HUC12 happens to be in the frame; on the test parcel it is not.
+
+### Not validated generally
+The 2,500 ft extent (still chosen for this parcel's distance to its boundary), the 1,000 ft major-reach threshold, the three-road label limit, and the Raleigh-only hydrology source. A parcel outside Raleigh has no reach layer yet. A parcel deep inside its HUC12 will show a tinted frame with no boundary, which may need a wider extent or a different device.
+
+### Review notes, first pass (Peter, 2026-09-18) — held for a later revision pass
+
+1. **Parcel flow map:** same two issues as the section 02 base map (it is the same base): the white halo around the building footprint, and the neighbor's footprint overlapping the crop. Fix once in the shared base: crop neighbor footprints to the map, label them with their address, label the subject building with its address.
+2. **Neighborhood map, parcel marker:** the ring around the parcel is not clear. Either a larger radius, a different color (plain black/ink is fine), or drop the ring entirely. The "your parcel" label then needs to sit offset above whatever the marker becomes, and read "Your parcel" (capitalized, good grammar throughout).
+3. **Neighborhood map, flow label:** "to Walnut Creek" overlays the arrow and is unclear. Offset it to the end of the arrow, clear of the line.
+4. **Neighborhood map, road labels:** the major-road labels collide with the reach linework and other lines. Give every label a surface-colored background (label box, not bare text), including the second major road above.
+5. **Neighborhood map, label hierarchy:** the watershed labels should be bigger. They are the point of the graphic.
+6. **General:** line work interferes with labels throughout. Every label on a busy map gets a background box; placement must avoid lines, not just other labels.
+
+Carry these into section 01 as it is built (Peter's instruction): label boxes on busy maps, offset labels off their anchors, address labels on buildings, marker clarity.
+
+
+---
+
+## Section 01, client-facing set (`R/illustrate/regional_orientation.R`)
+
+**Job:** the report's opening zoom-out and its first step in. Built 2026-09-18 with Peter's section 03 labeling notes applied from the start: every label on a busy map in a surface-colored box, labels offset from their anchors with leaders, the subject labeled with its address, a solid parcel marker rather than a thin ring.
+
+### Graphic 1, regional inset
+The July composition (`regional_inset.R`), restyled: state outline material-warm-03 on the card surface; Level III ecoregion canopy-01 with canopy-03 edge; Level IV canopy-02 with canopy-04 edge; the HUC06 river water-04; the parcel a bloom-05 dot with an ink outline. All four labels (PIEDMONT, Northern Outer Piedmont, Neuse River, Your parcel) sit in one repelled layer with directional nudges so they clear each other and the marker. The state outline and the river are now cached under `data/nc/` with provenance (the July notes asked for exactly this); the ecoregion polygons are still a per-parcel query (small) and clipped to the state at render time. `get_principal_river()` in `R/acquisition/hydrography.R` promotes the ad hoc NHD query; the "HUC06 name + River" heuristic and the reservoir-fragment limitation carry over unchanged.
+
+### Graphic 2, neighborhood orientation
+New. The block the client recognizes, at a 900 ft radius: named streets (every named street with a run over 250 ft, label in a box, repelled), buildings material-warm-02, the parcel outlined and tinted in bloom with its own building darker, and a two-line label "Your parcel / {address}" offset above on a leader. No data display at all: its only job is "yes, this is your parcel" (`WORKFLOW_SPEC.md` step 4). It reuses the section 03 road and building caches, so it costs no new fetch. The July neighborhood prototype (contours + hydrology + HUC12) is now section 03's second graphic, not this one.
+
+### Real bug caught
+`KED$canopy` did not exist: the token list in `parcel_topography.R` only carried the families sections 02 and 03 used, so the ecoregion label colors were NULL and the data frame failed with a misleading "differing number of rows" error. Canopy and understory added; the design system's other families (groundcover, chicory, coneflower, bloom scale) are still not in the list and should be added when a section needs them.
+
+### Not validated generally
+The 900 ft orientation radius and the 250 ft minimum street run are tuned on a dense urban grid; a rural parcel may need a wider frame and fewer labels. The regional inset's label nudges are tuned to a parcel in the eastern Piedmont; a coastal or mountain parcel will put the marker near a state edge and the nudges may push labels off the map.
+
+### Review notes, first pass (Peter, 2026-09-18) — held for a later revision pass
+
+1. **Regional inset, color:** good as is.
+2. **Regional inset, ecoregion labels:** the leader lines for PIEDMONT and Northern Outer Piedmont do not read as well as the watershed labels do in section 03. Either move those labels outside the state outline with leaders running in, or drop the leaders and set the label inside its polygon, near the centroid, offset toward the bottom-left. Either way, stop leading a label across the interior.
+3. **Regional inset, parcel label:** offset "Your parcel" so there is a little clear space between the label box and the marker; the leader should not touch the circle.
+4. **Neighborhood orientation map:** a good base map, but it tells the client nothing they do not already know. Make it carry two things the watershed-scale map cannot: **local drainage lines** (the small reaches and ditches, the path water actually takes off the block) and **canopy cover**. Both feed the opportunities and vulnerabilities in section 07, which is the point of putting them here. Open questions to work through: how to extrapolate broken drainage paths that the source data leaves as fragments so the lines read continuously (a judgment call to document, not silent gap-filling), and where parcel-scale canopy comes from, since NLCD is too coarse (the July finding) and this parcel has no canopy data yet. Candidates recorded, not built.
+5. **All sections, stat row (applied 2026-09-18, not held):** the stat values were rendering at h2 size and read as peers of the section title; now h3 (`.stat-value`), and the label sits above the value so "Ground drains toward / Southeast" reads in order. Done in `R/report/render_report.R` (label-first markup, plus a CSS override on the vendored design system's `.stat-value`, which still says h2 in the design project; sync that change back to the design system when convenient).
+
+**Handoff note (2026-09-18, earlier session):** Peter intends to work the remaining sections with a different agent, and to run the held revision passes (sections 01, 02, 03) separately. Sections 04 and 05 were built later the same day by that second agent (below); the revision passes are still held, by Peter's call, until the prototype is complete so any global edits can be made in one pass.
+
+---
+
+## Section 04, client-facing set (`R/illustrate/climate_wind.R`)
+
+**Job:** the thirty-year baseline the landscape operates within, and the wind. Built 2026-09-18 on the test parcel from the two acquisition sources validated in July (`R/acquisition/climate.R`, `R/acquisition/wind.R`). First pass, not validated on a second site. No prose.
+
+### The graphics
+1. **Seasonal cards** (HTML, the design system's own component): inches in an average month of each season, the season's mean temperature, and now its average daily high and low. Same four-family rotation the design system prescribes (water, canopy, gold, ember).
+2. **Climate chart**: two stacked panels, precipitation bars (water-03) above, the average daily high/low band (gold-03) with the mean dashed below. **The year runs November to October**, not January to December, so each of the PRD's seasons (Nov–Jan, Feb–Apr, May–Jul, Aug–Oct) is one contiguous block, tinted with its season family at low alpha and labeled. Annotations use the "name the threshold" device from section 02: wettest and driest month, the warmest month's high, the coldest month's low, and the 32°F freezing line. Two months (Jan, Feb) have an average low below freezing on the test parcel.
+3. **Wind roses**, four seasons in a 2×2, each in its season family: how often the day's strongest two-minute wind (NCEI `WDF2`) came from each of eight directions, over ten complete calendar years at Raleigh airport, with the season's average speed in the facet title. Southwest dominates spring and summer (42%, 39%), the northeast takes over in fall (30%), which matches known Piedmont climatology (the July note).
+
+### Stats for the section
+Precipitation in a year (47.9 in, matching the July validation figure exactly), the warmest month's average high, the coldest month's average low, the prevailing wind over the whole record. The seasonal values in the cards are means of the three monthly normals per season, so they equal the July test values converted to inches and °F.
+
+### Decisions worth Peter's eye
+- **Nov→Oct axis.** Unconventional, chosen so the seasons read as blocks and match the card order. If it confuses readers, the cost of a Jan→Dec axis is that winter splits across both ends.
+- **Whole calendar years, not a rolling window** (`get_wind_data()` changed 2026-09-18). Every season gets the same number of days, and the window is stable enough to cache. Previously the window ended yesterday and the summer count drifted through the year.
+- **The roses bin the strongest wind of each day, not hourly observations.** GHCN-Daily has no hourly direction; the caption says exactly what is binned. A true prevailing-wind rose would need ISD hourly data, a different source.
+- **Dark mode lesson, again.** First render put season labels, the "avg high / avg low" end labels and the wettest/driest text in family-06 steps, all invisible on the dark surface, and tinted the season bands with the near-neutral 01 steps, which read as grey slabs. Text on the surface or in a label box now uses the theme-swapped ink/muted; bands use the hued 02 step at 0.3 alpha. This is the same finding recorded for section 02 on 2026-09-17; it is worth making a rule in the design system: family steps are for marks and for text *on those marks*, never for text on the surface.
+- `patchwork` 1.1 fails against ggplot2 3.5's guide layout on this machine; the two panels are stacked with `cowplot::plot_grid` instead.
+
+### Not validated generally
+The freezing line only means something where winter lows approach 32°F; a coastal parcel may need a different threshold annotation (or none). The rose scale (0–40%) is fixed by the strongest season; a site with a flatter distribution will show small roses. The nearest `USW` station can be 30+ miles from a rural parcel; the caption names it so the distance is visible, but the report does not yet say how far.
+
+---
+
+## Section 05, client-facing set (`R/illustrate/parcel_soils.R`, additions to `R/acquisition/soil.R`)
+
+**Job:** what lies beneath, as the survey actually describes it. Built 2026-09-18 on the test parcel. First pass, not validated on a second site. No prose; the `implication` column the payload contract sketched stays absent until the writing approach is settled.
+
+### What SSURGO can say at parcel scale, and what this section does about it
+The test parcel sits entirely inside one map unit, **BcC, Beltline-Urban land-Cecil complex, 2 to 10 percent slopes**. A *complex* names soils that occur together in a pattern too fine to map at 1:24,000: Beltline 40%, Urban land 35%, Cecil 20%, Chavis 5%. Those shares describe the whole unit across the county, and the survey does not locate them within a lot. So the section is built around that honesty: the stat row names the unit and its largest soil *with its share*; the table is one heading per unit with a row per component and a "share of unit" column; the caption says the survey does not place them. Rendering a single "your soil is Cecil" answer would be false precision of exactly the kind the building mask exists to avoid.
+
+### The graphics
+1. **Soil map**, the section 03 frame (2,500 ft radius), map units tinted by the drainage class of their dominant soil on the design system's own gradient (understory-03 well, canopy-02 moderately well, gold-03 somewhat poor, ember-03 poor; excessively drained shares the well-drained step), outlined ochre-05, labeled with the symbol in a label box; roads and the Raleigh reaches as a quiet base; the parcel as a bloom marker with "Your parcel". Buildings were tried and dropped: at 0.45 alpha they barely showed and cost ~540 KB of SVG. Nine units in frame; the frame is 92% BcC, so the map is mostly one tint with the rocky Wake-Rolesville slopes, the Helena unit and the Chewacla-Wehadkee floodplain (somewhat poorly drained, frequently flooded) along Walnut Creek as the differences. That is the true picture and it is why the frame is 2,500 ft, not 900: at 900 ft the map is one polygon.
+2. **Soil profiles**: the components of the parcel's map unit side by side as horizon columns to 60 in, **column width proportional to the component's share**, horizon fill by clay content (ochre-02 sandy to ochre-05 clay), horizon name and representative texture in each band that is tall enough, Urban land as a plain block "not mapped as soil". Two annotations: a bracket beside the human-transported fill horizons (SSURGO's `^` prefix; the "^" is stripped from the label and the bracket says "fill"), and a dashed line at the first horizon whose saturated hydraulic conductivity falls below 1 µm/s, labeled "water moves slowly below N in". On the test parcel that is 19 in for Beltline (a buried clay subsoil under 19 in of fill) and 31 in for Cecil.
+
+### Real findings, not just style
+- **SDA answers a query with no matching rows with a bare `{}`.** `sda_query()` treated that as a failure; it is a real answer (no restrictive layer, no wet-month water table). Now returns an empty frame; `sda_frame()` re-attaches the column names SDA drops with the rows.
+- **Cecil carries hydrologic group D inside this urban complex** while the standalone Cecil unit next door (CeB) is group A and the unit's dominant condition is C. Presented as the source gives it; flagged here because a reader who knows Cecil as a B soil will notice. Not investigated.
+- **Units are cm and µm/s.** Horizon depths are converted to inches for display; ksat to in/hr in the payload (`surface_ksat_in_hr`). The slow-water threshold of 1 µm/s is the NRCS boundary between "moderately low" and "moderately high" classes.
+- **The neighborhood polygons come through the county cache** (`ssurgo_mupolygon`, with the extent hash), the tabular queries stay live. SSURGO polygons change on the survey's schedule, years, so the 180-day default is conservative.
+
+### Decisions worth Peter's eye
+- Drainage class as the map's fill encoding (the design system's gradient) rather than unit identity. With BcC covering the frame, the map is one green sheet with small exceptions; that reads as "your whole neighborhood drains well except the creek bottom", which is the point, but it is a saturated green and the legend must sit right under it.
+- The stat "Largest soil in the unit: Beltline, 40%" rather than "Soil: Beltline". The share is load-bearing.
+- The profile shows the survey's representative values (`_r`), not ranges. A low/high band per horizon exists in SSURGO and could be a later refinement.
+- The `landform` field ("fills on hillslopes on piedmonts") is in the payload but not in the table; it overflowed the table and reads as jargon. It is exactly the kind of thing prose would translate.
+
+### Not validated generally
+A parcel that straddles two units gets two headings and a `pct_of_parcel` split; untested. A consociation (one named soil at 85%+) will produce one wide column and the profile will look empty on the right; the width rule may want a floor. Units with `Urban land` at 100% have no horizons at all. The 60 in cut-off truncates the deep Bt horizons (Cecil's go to 79 in); the caption says so.
+
+---
+
+## Caches moved out of tempdir (2026-09-18)
+`PRISM_CACHE_DIR`, `GHCND_STATIONS_CACHE_DIR` and `BUILDING_FOOTPRINTS_CACHE_DIR` defaulted to R's per-session `tempdir()`, so every new session re-downloaded 134 MB of PRISM grids, the 11 MB station list and the 69 MB county footprint file; the handoff note warned about the last one. All three now default under `data/` (gitignored, `KED_DATA_DIR` moves it), beside the county cache. The daily wind record is cached there too, keyed by station and window.

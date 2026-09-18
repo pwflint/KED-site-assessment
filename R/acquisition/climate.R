@@ -5,7 +5,10 @@ library(terra)
 # distribution service - so cache each element/month grid once and reuse across
 # every parcel, rather than re-downloading per site. ~2.8MB per grid, ~134MB total
 # for 4 elements x 12 months - a one-time cost, not a per-assessment cost.
-PRISM_CACHE_DIR <- Sys.getenv("PRISM_CACHE_DIR", file.path(tempdir(), "prism_normals_cache"))
+# Default moved from tempdir() to the gitignored data/ directory (2026-09-18)
+# so the 134 MB grid set survives between sessions. KED_DATA_DIR or
+# PRISM_CACHE_DIR override.
+PRISM_CACHE_DIR <- Sys.getenv("PRISM_CACHE_DIR", file.path(Sys.getenv("KED_DATA_DIR", "data"), "prism"))
 
 prism_normal_raster <- function(element, month, cache_dir = PRISM_CACHE_DIR) {
   fname <- sprintf("prism_%s_us_25m_2020%02d_avg_30y", element, month)
@@ -43,7 +46,7 @@ get_monthly_normal <- function(element, month, point_wgs84_xy) {
 
 # --- full seasonal normals profile for a parcel ---
 get_seasonal_normals <- function(parcel_sf, elements = c("ppt", "tmax", "tmin", "tmean")) {
-  centroid <- st_transform(st_centroid(parcel_sf), 4326) |> st_coordinates()
+  centroid <- st_transform(st_centroid(st_geometry(parcel_sf)), 4326) |> st_coordinates()
   point_xy <- c(centroid[1, "X"], centroid[1, "Y"])
 
   result <- list()
